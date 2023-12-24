@@ -1,3 +1,33 @@
+*.iml
+.gradle/
+/.classpath
+/.idea/
+/.project
+/.settings/
+/bin/
+/local.properties
+/nbproject/
+/target/
+/test-output/
+
+.DS_Store
+.DS_Store?
+
+./build
+.externalNativeBuild
+/app/build
+/build
+/captures
+/import-summary.txt
+/local.properties
+Thumbs.db
+
+*.jks
+*.keystore
+
+/jdax-lib/target/
+/jdax-samples/target/
+
 # Compiled class file
 *.class
 
@@ -22,3 +52,6 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+/jdax-lib/target/
+/jdax-samples/target/
