@@ -7,7 +7,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
-import java.time.ZoneId;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Date;
 
@@ -33,27 +35,34 @@ public class SQLTypeConverter {
                 return rs.getString(columnIndex);
             }
             case Types.DECIMAL, Types.NUMERIC -> {
+                // NUMBER(p, s)
                 return rs.getBigDecimal(columnIndex);
             }
             case Types.BIT -> {
+                // NUMBER(3)
                 return rs.getBoolean(columnIndex);
             }
             case Types.SMALLINT -> {
+                // NUMBER(5)
                 return rs.getShort(columnIndex);
             }
             case Types.INTEGER -> {
+                // NUMBER(10)
                 return rs.getInt(columnIndex);
             }
             case Types.TINYINT -> {
                 return rs.getByte(columnIndex);
             }
             case Types.BIGINT -> {
+                // NUMBER(19)
                 return rs.getLong(columnIndex);
             }
             case Types.DOUBLE, Types.FLOAT -> {
+                // FLOAT(49)
                 return rs.getDouble(columnIndex);
             }
             case Types.REAL -> {
+                // FLOAT(23)
                 return rs.getFloat(columnIndex);
             }
             case Types.BINARY, Types.VARBINARY, Types.LONGVARBINARY -> {
@@ -62,11 +71,20 @@ public class SQLTypeConverter {
             case Types.NULL -> {
                 return null;
             }
-            case Types.TIMESTAMP, Types.DATE -> {
-                return ZonedDateTime.ofInstant(rs.getTimestamp(columnIndex).toInstant(), ZoneId.of("UTC"));
+            case Types.DATE -> {
+                return rs.getDate(columnIndex);
             }
             case Types.TIME -> {
                 return rs.getTime(columnIndex);
+            }
+            case Types.TIMESTAMP -> {
+                return rs.getTimestamp(columnIndex);
+            }
+            case Types.BLOB -> {
+                return rs.getBlob(columnIndex).getBinaryStream();
+            }
+            case Types.CLOB -> {
+                return rs.getClob(columnIndex).getCharacterStream();
             }
             default -> {
                 return rs.getObject(columnIndex);
@@ -112,14 +130,20 @@ public class SQLTypeConverter {
             case "java.math.BigDecimal" -> {
                 ps.setBigDecimal(columnIndex, (BigDecimal) value);
             }
+            case "java.time.LocalDate" -> {
+                ps.setDate(columnIndex, java.sql.Date.valueOf((LocalDate) value));
+            }
+            case "java.time.LocalTime" -> {
+                ps.setTime(columnIndex, java.sql.Time.valueOf((LocalTime) value));
+            }
+            case "java.time.Instant" -> {
+                ps.setTimestamp(columnIndex, new Timestamp(((Instant) value).toEpochMilli()));
+            }
             case "java.util.Date" -> {
                 ps.setDate(columnIndex, new java.sql.Date(((Date) value).getTime()));
             }
             case "java.time.ZonedDateTime" -> {
-                ps.setTimestamp(columnIndex, new Timestamp(((ZonedDateTime) value).toInstant().getEpochSecond() * 1000L));
-            }
-            case "java.sql.Date" -> {
-                ps.setDate(columnIndex, (java.sql.Date) value);
+                ps.setTimestamp(columnIndex, new Timestamp(((ZonedDateTime) value).toInstant().toEpochMilli()));
             }
             case "java.new.URL", "java.new.URI" -> {
                 ps.setString(columnIndex, value.toString());
@@ -129,9 +153,9 @@ public class SQLTypeConverter {
             }
             default -> {
                 if (value.getClass().getName().toLowerCase().contains("inputstream")) {
-                    ps.setAsciiStream(columnIndex, (InputStream) value);
+                    ps.setBinaryStream(columnIndex, (InputStream) value);
                 } else {
-                    throw new SQLException("Object of type " + value.getClass().getName() + " cannot be mapped to a JDBC type");
+                    throw new SQLException("Object of type " + value.getClass().getName() + ", is not supported");
                 }
             }
         }

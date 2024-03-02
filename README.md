@@ -34,10 +34,10 @@ The first call to the API must configure the connection parameters. This is done
 |---|---|
 | `Connector.prepare()` | Set up a connectin to a datasource |
 
-The prepare method has 2 variants, 1 of which must be called during pool configuration only (usually startup):
+The prepare method has 2 variants, 1 of which must be called during pool configuration (usually startup):
 
 ```java
-Connector.prepare(datasourceRef, DataSource_function, Features);
+Connector.prepare(datasourceRef, DataSourceFunction, Features);
 Connector.prepare(datasourceRef, DataSource, Features);
 ```
 
@@ -68,6 +68,34 @@ stored into the object cache and made available to the application.
 | `DAOType.update()` | Update DB records using the SQL query provided. Input data is either a VO, or an array of values |
 
 ### Extending DAOType
+
+Typically, your application needs to implement a DAOType for each data model the application needs.
+The following illustrates how a ProductDAO can be writen:
+
+    public class ProductDAO extends DAOType{
+        public Product(String dsName){ super(dsName); }
+
+        private static final String SELECT_BY_ID = "select * from products where id = ?";
+        public ResultRows byID(int id){
+            return select(new Object[]{ id }, SELECT_BY_ID);
+        }
+    }
+
+Now, each time the application needs to get Products from the database:
+
+    final ProductDAO productDAO = new ProductDAO(dsName);
+
+    @GET
+    @Path("products")
+    public Product productByID(@QueryParam int productID){
+        ResultRows rows = productDAO.select(productID);
+        if (rows.next()){
+            return new Product(
+                    rows.intValue("id"), // id field
+                    rows.string("name") // name field
+                );
+        }
+    }
 
 ### Query syntax
 
@@ -179,3 +207,30 @@ Notice how the replacement marker (#) now has a tag right after it. This time, t
 but will instead use the literal tag as part of the executable query.
 Tags can be any clauses, constructs, or instructions that the DB implementation supports.
 
+## Data types
+
+| SQL type | Java type |
+|---|---|
+| VARCHAR   | java.lang.String |
+| CHAR      | java.lang.String |
+| LONGNVARCHAR | java.lang.String |
+| DECIMAL   | BigDecimal |
+| NUMERIC   | BigDecimal |
+| BIT       | boolean |
+| SMALLINT  | short |
+| INTEGER   | int |
+| TINYINT   | byte |
+| BIGINT    | long |
+| DOUBLE    | double |
+| FLOAT     | double |
+| REAL      | float |
+| BINARY    | byte[] |
+| VARBINARY | byte[] |
+| LONGVARBINARY | byte[] |
+| NULL      | null |
+| DATE      | java.time.LocalDate |
+| TIME      | java.time.LocalTime |
+| TIMESTAMP | java.time.Instant |
+| BLOB      | byte[], InputStream |
+| CLOB      | String |
+| (other)   | Object |
