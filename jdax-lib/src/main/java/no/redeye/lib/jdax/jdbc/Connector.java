@@ -179,11 +179,6 @@ public class Connector {
             return;
         }
 
-        if (enabled(key, Features.AUTO_COMMIT_ENABLED) || !enabled(key, Features.AUTO_COMMIT_DISABLED)) {
-            // Do not commit a connection that is in auto-commit mode
-            return;
-        }
-
         try {
             logger.trace("Connection commit");
             connection(key, false).commit();
@@ -207,11 +202,6 @@ public class Connector {
 
         if (!ready(key)) {
             logger.error("Cannot rollback a null database connection");
-            return;
-        }
-
-        if (enabled(key, Features.AUTO_COMMIT_ENABLED) || !enabled(key, Features.AUTO_COMMIT_DISABLED)) {
-            // Do not rollback a connection that is in auto-commit mode
             return;
         }
 
