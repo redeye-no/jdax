@@ -80,7 +80,6 @@ public class QueryTests {
 
                                 """;
 
-
     @BeforeEach
     public void setUp() throws Exception {
 
@@ -119,7 +118,6 @@ public class QueryTests {
 //        ResultRows results = dao.selectAllFields();
 //        assertRecordCount(results, 5);
 //    }
-
     @Test
     public void selectAllOddRowIDs() throws SQLException {
         DVODAO dao = new DVODAO(datasourceRef);
@@ -174,10 +172,10 @@ public class QueryTests {
 
     private void assertRecordCount(ResultRows vos, int expected) {
         Assertions.assertEquals(expected, vos.size(), "Record count mismatch");
-        
-        while (vos.next()){
+
+        while (vos.next()) {
             try {
-                System.out.println(vos.getObject(1)+ " "+vos.getObject(2));
+                System.out.println(vos.object(1) + " " + vos.object(2));
             } catch (SQLException ex) {
                 Logger.getLogger(QueryTests.class.getName()).log(Level.SEVERE, null, ex);
             }
