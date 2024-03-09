@@ -1,11 +1,12 @@
 package no.redeye.lib.jdax;
 
+//import java.lang.reflect.Field;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 import java.sql.PreparedStatement;
-import no.redeye.lib.jdax.types.ResultRows;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -19,14 +20,16 @@ import no.redeye.lib.jdax.jdbc.Features;
 import no.redeye.lib.jdax.jdbc.SQLTypeConverter;
 import no.redeye.lib.jdax.types.QueryInputs;
 import no.redeye.lib.jdax.types.QueryResults;
+import no.redeye.lib.jdax.types.ResultRows;
 import no.redeye.lib.jdax.types.VO;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- *
+ * DAOType is a data access class that parses and prepares SQL queries for execution.
+ * This class provides convenience methods for all CRUD operations.
  */
-public abstract class DAOType {
+public class DAOType {
 
     protected static Logger logger = LogManager.getLogger("apiLogger");
 
@@ -35,15 +38,11 @@ public abstract class DAOType {
     private final String DS_NAME;
 
     /**
-     * Each DAO class must provide a value object type, whose constructor signature
-     * determines how the ResultSet fields are defined in data retrieval queries.
-     * For instance, a DAO object type with the following signature
-     * new ObjectType(int, String, String) will require that select queries that
-     * return this object must have the appropriate fields.
-     *
-     * @param datasourceName The datasourceName associated datasource declared in the Connector
+     * 
+     * @param datasourceName The datasourceName associated datasource declared
+     * in the Connector
      */
-    protected DAOType(String datasourceName) {
+    public DAOType(String datasourceName) {
         DS_NAME = datasourceName;
     }
 
@@ -60,7 +59,7 @@ public abstract class DAOType {
      *
      * @throws SQLException
      */
-    protected ResultRows select(String sql, Object[]... ins) throws SQLException {
+    public ResultRows select(String sql, Object[]... ins) throws SQLException {
         return select((Object[]) null, sql, ins);
     }
 
@@ -68,8 +67,7 @@ public abstract class DAOType {
      * Execute select query with provided bind values.
      * <p>
      * <
-     * pre>select from something
-     * where thing = :values:</pre>
+     * pre>select from something where thing = :values:</pre>
      *
      * @param vo
      * @param sql
@@ -79,7 +77,7 @@ public abstract class DAOType {
      *
      * @throws SQLException
      */
-    protected ResultRows select(VO vo, String sql, Object[]... ins) throws SQLException {
+    public ResultRows select(VO vo, String sql, Object[]... ins) throws SQLException {
         Object[] values = fields(vo);
         return select(values, sql, ins);
     }
@@ -123,45 +121,46 @@ public abstract class DAOType {
      *
      * @throws SQLException
      */
-    protected ResultRows select(Object[] values, String sql, Object[]... ins) throws SQLException {
+    public ResultRows select(Object[] values, String sql, Object[]... ins) throws SQLException {
         QueryInputs qi = buildQueryInputs(values, ins, sql);
         return executeQuery(qi);
     }
 
     /**
-     * Execute insert statement with values from provided VO.This convenience method returns a single identity value for
-     * the inserted row.
+     * Execute insert statement with values from provided VO.This convenience
+     * method returns a single identity value for the inserted row.
      *
      * @param clazz
      * @param sql
-     * @param returnFields field name whose value is returned as identity. If blank (""), then the default identity is
-     *                     returned.
+     * @param returnFields field name whose value is returned as identity. If
+     * blank (""), then the default identity is returned.
      *
      * @return identity value for the new record
      *
      * @throws SQLException
      */
     @SafeVarargs
-    protected final long insertOne(VO clazz, String sql, String... returnFields) throws SQLException {
+    public final long insertOne(VO clazz, String sql, String... returnFields) throws SQLException {
         Object[] values = fields(clazz);
         return insertOne(values, sql, returnFields);
     }
 
     /**
-     * Execute insert statement with provided bind values.This convenience method returns a single identity value for
-     * the inserted row.
-     * -1, if no rows were inserted.
+     * Execute insert statement with provided bind values.This convenience
+     * method returns a single identity value for the inserted row. -1, if no
+     * rows were inserted.
      *
      * @param values
      * @param sql
      * @param returnFields field name whose value is returned as identity
      *
-     * @return identities of inserted rows, or number of inserted rows if fields is null
+     * @return identities of inserted rows, or number of inserted rows if fields
+     * is null
      *
      * @throws SQLException
      */
     @SafeVarargs
-    protected final long insertOne(Object[] values, String sql, String... returnFields) throws SQLException {
+    public final long insertOne(Object[] values, String sql, String... returnFields) throws SQLException {
         QueryInputs qi = buildQueryInputs(values, null, sql);
         QueryResults qr = executeInsert(qi, returnFields);
 
@@ -186,7 +185,7 @@ public abstract class DAOType {
      * @throws SQLException
      */
     @SafeVarargs
-    protected final List<Long> insert(VO clazz, String sql, String... returnFields) throws SQLException {
+    public final List<Long> insert(VO clazz, String sql, String... returnFields) throws SQLException {
         Object[] values = fields(clazz);
         QueryInputs qi = buildQueryInputs(values, null, sql);
         return insert(values, sql, returnFields);
@@ -204,7 +203,7 @@ public abstract class DAOType {
      * @throws SQLException
      */
     @SafeVarargs
-    protected final List<Long> insert(Object[] values, String sql, String... returnFields) throws SQLException {
+    public final List<Long> insert(Object[] values, String sql, String... returnFields) throws SQLException {
         QueryInputs qi = buildQueryInputs(values, null, sql);
         return executeInsert(qi, returnFields).ids();
     }
@@ -213,8 +212,7 @@ public abstract class DAOType {
      * Update table using VO
      * <p>
      * <
-     * pre>update/delete something
-     * where another in (:ins:)</pre>
+     * pre>update/delete something where another in (:ins:)</pre>
      *
      * @param clazz
      * @param sql
@@ -224,7 +222,7 @@ public abstract class DAOType {
      *
      * @throws SQLException
      */
-    protected int update(VO clazz, String sql, Object[]... ins) throws SQLException {
+    public int update(VO clazz, String sql, Object[]... ins) throws SQLException {
         return update(clazz, null, sql, ins);
     }
 
@@ -232,8 +230,7 @@ public abstract class DAOType {
      * Update table using VO
      * <p>
      * <
-     * pre>update something
-     * set thing1 = :class.thing1, thing2 = :class.thing2
+     * pre>update something set thing1 = :class.thing1, thing2 = :class.thing2
      * where another = :wheres:</pre>
      *
      * @param clazz
@@ -245,7 +242,7 @@ public abstract class DAOType {
      *
      * @throws SQLException
      */
-    protected int update(VO clazz, Object[] wheres, String sql, Object[]... ins) throws SQLException {
+    public int update(VO clazz, Object[] wheres, String sql, Object[]... ins) throws SQLException {
         Object[] values = fields(clazz);
         return update(values, wheres, sql, ins);
     }
@@ -254,8 +251,7 @@ public abstract class DAOType {
      * Update table.
      * <p>
      * <
-     * pre>update/delete something
-     * where another in (:ins:)</pre>
+     * pre>update/delete something where another in (:ins:)</pre>
      *
      * @param values - new values
      * @param ins
@@ -265,7 +261,7 @@ public abstract class DAOType {
      *
      * @throws SQLException
      */
-    protected int update(Object[] values, String sql, Object[]... ins) throws SQLException {
+    public int update(Object[] values, String sql, Object[]... ins) throws SQLException {
         QueryInputs qi = buildQueryInputs(values, null, ins, sql);
         return executeUpdate(qi).count();
     }
@@ -288,7 +284,7 @@ public abstract class DAOType {
      *
      * @throws SQLException
      */
-    protected int update(Object[] values, Object[] wheres, String sql, Object[]... ins) throws SQLException {
+    public int update(Object[] values, Object[] wheres, String sql, Object[]... ins) throws SQLException {
         QueryInputs qi = buildQueryInputs(values, wheres, ins, sql);
         return executeUpdate(qi).count();
     }
@@ -393,15 +389,9 @@ public abstract class DAOType {
     private ResultRows executeQuery(QueryInputs qi) throws SQLException {
         logger.debug("SQL: {}", qi.sql());
 
-        try (PreparedStatement ps = Connector.connection(DS_NAME).prepareStatement(qi.sql())) {
-            bind(ps, qi.values());
-
-            try (ResultSet rs = ps.executeQuery()) {
-                return new ResultRows(rs);
-            }
-        } catch (SQLException se) {
-            throw se;
-        }
+        PreparedStatement ps = Connector.connection(DS_NAME).prepareStatement(qi.sql());
+        bind(ps, qi.values());
+        return new ResultRows(ps.executeQuery(), ps);
     }
 
     private QueryResults executeInsert(QueryInputs qi, String[] fields) throws SQLException {
@@ -491,9 +481,8 @@ public abstract class DAOType {
     }
 
     /**
-     * Extract all field values from the clazz record.
-     * The skipFields indices allows this method to drop ID fields from bind
-     * variables.
+     * Extract all field values from the clazz record. The skipFields indices
+     * allows this method to drop ID fields from bind variables.
      *
      * @param clazz
      * @param skipFields

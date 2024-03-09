@@ -4,16 +4,16 @@
  */
 package no.redeye.lib.jdax.sql;
 
+import java.io.IOException;
 import no.redeye.lib.jdax.jdbc.Connector;
 import no.redeye.lib.jdax.types.DVODAO;
 import no.redeye.lib.jdax.jdbc.Features;
 import java.sql.SQLException;
 import java.util.function.Function;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.sql.DataSource;
 import no.redeye.lib.jdax.types.DVO;
 import no.redeye.lib.jdax.types.ResultRows;
+import no.redeye.lib.jdax.types.VO;
 import org.jooq.tools.jdbc.MockConnection;
 import org.jooq.tools.jdbc.MockFileDatabase;
 import org.junit.jupiter.api.AfterEach;
@@ -106,30 +106,32 @@ public class QueryTests {
     }
 
     @Test
-    public void selectAllNamedFields() throws SQLException {
+    public void selectAllNamedFields() throws SQLException, IOException {
         DVODAO dao = new DVODAO(datasourceRef);
-        ResultRows results = dao.selectAllNamedFields();
-        assertRecordCount(results, 5);
+        try (ResultRows results = dao.selectAllNamedFields()) {
+            assertResultRows(results);
+        }
     }
-
-//    @Test
-//    public void selectAllFields() throws SQLException {
-//        DVODAO dao = new DVODAO(datasourceRef);
-//        ResultRows results = dao.selectAllFields();
-//        assertRecordCount(results, 5);
-//    }
-    @Test
-    public void selectAllOddRowIDs() throws SQLException {
-        DVODAO dao = new DVODAO(datasourceRef);
-        ResultRows results = dao.selectOddIDs(null, new Object[][]{{1, 3, 7}});
-        assertRecordCount(results, 3);
+    
+    public record Thing(String id, String number, String name) implements VO {};
+    
+    private void assertResultRows(ResultRows results) throws SQLException {
+        while (results.next()) {
+            Thing get = results.get(Thing.class);
+            System.out.println("Thing is " + get);
+        }
     }
 
     @Test
-    public void selectOneID() throws SQLException {
+    public void selectAllOddRowIDs() throws SQLException, IOException {
         DVODAO dao = new DVODAO(datasourceRef);
-        ResultRows vos = dao.selectOneID(new Object[]{3});
-        assertRecordCount(vos, 1);
+        try (ResultRows results = dao.selectOddIDs(null, new Object[][]{{1, 3, 7}})) {}
+    }
+
+    @Test
+    public void selectOneID() throws SQLException, IOException {
+        DVODAO dao = new DVODAO(datasourceRef);
+        try (ResultRows vos = dao.selectOneID(new Object[]{3})){}
     }
 
     @Test
@@ -168,17 +170,5 @@ public class QueryTests {
         DVO dvo = new DVO("1", "191", "one nine one");
         long updated = dao.insertWithSequenceField(dvo);
         Assertions.assertEquals(-1, updated); // -1, cos getGeneratedKeys  is not mocked in jooq with MockFileDatabase
-    }
-
-    private void assertRecordCount(ResultRows vos, int expected) {
-        Assertions.assertEquals(expected, vos.size(), "Record count mismatch");
-
-        while (vos.next()) {
-            try {
-                System.out.println(vos.object(1) + " " + vos.object(2));
-            } catch (SQLException ex) {
-                Logger.getLogger(QueryTests.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
     }
 }

@@ -1,6 +1,7 @@
 package no.redeye.lib.jdax.jdbc;
 
 import java.io.InputStream;
+import java.io.Reader;
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -88,6 +89,87 @@ public class SQLTypeConverter {
             }
             default -> {
                 return rs.getObject(columnIndex);
+            }
+        }
+    }
+
+    /**
+     * Return the argument type for columns in a resultSet.
+     *
+     * @param rs
+     *
+     * @return
+     *
+     * @throws SQLException
+     */
+    public static Class<?>[] rowTypes(ResultSet rs) throws SQLException {
+        Class<?>[] paramTypes = new Class<?>[rs.getMetaData().getColumnCount()];
+        for (int i = 0; i < paramTypes.length; i++) {
+            int columnType = rs.getMetaData().getColumnType(i + 1);
+            paramTypes[i] = columnTypeClass(columnType);
+        }
+        return paramTypes;
+    }
+
+    private static Class columnTypeClass(int columnType) throws SQLException {
+        switch (columnType) {
+            case Types.VARCHAR, Types.CHAR, Types.LONGNVARCHAR -> {
+                return String.class;
+            }
+            case Types.DECIMAL, Types.NUMERIC -> {
+                // NUMBER(p, s)
+                return BigDecimal.class;
+            }
+            case Types.BIT -> {
+                // NUMBER(3)
+                return Boolean.class;
+            }
+            case Types.SMALLINT -> {
+                // NUMBER(5)
+                return Short.class;
+            }
+            case Types.INTEGER -> {
+                // NUMBER(10)
+                return Integer.class;
+            }
+            case Types.TINYINT -> {
+                return Byte.class;
+            }
+            case Types.BIGINT -> {
+                // NUMBER(19)
+                return Long.class;
+            }
+            case Types.DOUBLE, Types.FLOAT -> {
+                // FLOAT(49)
+                return Double.class;
+            }
+            case Types.REAL -> {
+                // FLOAT(23)
+                return Float.class;
+            }
+            case Types.BINARY, Types.VARBINARY, Types.LONGVARBINARY -> {
+                return InputStream.class;
+            }
+            case Types.NULL -> {
+                return null;
+            }
+            case Types.DATE -> {
+                return LocalDate.class;
+            }
+            case Types.TIME -> {
+                return LocalTime.class;
+            }
+            case Types.TIMESTAMP -> {
+                return Instant.class;
+            }
+            case Types.BLOB -> {
+                return InputStream.class;
+            }
+            case Types.CLOB -> {
+                return Reader.class;
+            }
+            default -> {
+                return Object.class;
             }
         }
     }

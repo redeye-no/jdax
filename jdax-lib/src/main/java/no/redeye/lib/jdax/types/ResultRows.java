@@ -4,12 +4,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
-import no.redeye.lib.jdax.jdbc.SQLTypeConverter;
+import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -18,19 +20,28 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import no.redeye.lib.jdax.jdbc.SQLTypeConverter;
 
 /**
- * A transfer object for SQL results
+ * A transfer object for SQL results. ResultRows provides a mechanism to:
+ * <li>retrieve query results, one row at a time</li>
+ * <li>retrieve row results as Java records</li>
  */
-public class ResultRows implements VO {
+public class ResultRows implements VO, AutoCloseable {
 
     private final List<String> fieldNames = new ArrayList();
-    private final List<List> rows = new ArrayList();
-    private int rowIndex = -1;
 
-    public ResultRows(ResultSet rs) throws SQLException {
-        if (null != rs) {
-            ResultSetMetaData metaData = rs.getMetaData();
+    private final Statement statement;
+    private final ResultSet resultSet;
+    private ResultSetMetaData metaData;
+    private Class<?>[] argumentTypes = null;
+    private List rowTypes = new ArrayList();
+
+    public ResultRows(ResultSet resultSet, Statement statement) throws SQLException {
+        this.statement = statement;
+        this.resultSet = resultSet;
+        if (null != resultSet) {
+            metaData = resultSet.getMetaData();
 
             if (fieldNames.isEmpty()) {
                 for (int i = 1; i <= metaData.getColumnCount(); i++) {
@@ -39,37 +50,78 @@ public class ResultRows implements VO {
                     }
                 }
             }
-
-            while (rs.next()) {
-                List paramTypes = new ArrayList();
-                for (int i = 1; i <= metaData.getColumnCount(); i++) {
-                    int columnType = metaData.getColumnType(i);
-
-                    Object obj = rs.getObject(i);
-
-                    if (null == obj) {
-                        paramTypes.add(SQLTypeConverter.getNullForType(columnType));
-                    } else {
-                        paramTypes.add(SQLTypeConverter.getValueForType(rs, i, columnType));
-                    }
-                }
-                rows.add(paramTypes);
-            }
         }
     }
 
     /**
-     * Retrieve value of current field as an Object.
-     * 
+     * Get the results of the current row as a Java record of the given type.
+     * This method requires that the row has values of the same type as the
+     * record expects.
+     *
+     * @param <T>
+     * @param returnType
+     * @param <?>
+     *
+     * @return
+     *
+     * @throws java.sql.SQLException
+     */
+    public <T> T get(Class<T> returnType) throws SQLException {
+        try {
+            Object[] argumentValues = resultSetValues();
+            if (null == argumentTypes) {
+                argumentTypes = SQLTypeConverter.rowTypes(resultSet);
+            }
+            if (argumentValues.length != argumentTypes.length) {
+                throw new SQLException("DAOType expects " + argumentTypes.length + " parameters but ResultSet has " + argumentValues.length);
+            }
+            return returnType.getDeclaredConstructor(argumentTypes).newInstance(argumentValues);
+        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            throw new SQLException(e);
+        }
+    }
+
+    /**
+     * Create and return an Object[] with the ResultSet values in the order
+     * expected by the generic type constructor of this DAO.
+     * <p>
+     * DAOs that need to translate between resultset fields and constructor
+     * types must override this method.
+     *
+     * @param rs
+     *
+     * @return
+     *
+     * @throws SQLException
+     */
+    private Object[] resultSetValues() throws SQLException {
+        Object[] paramTypes = new Object[metaData.getColumnCount()];
+        for (int i = 1; i <= metaData.getColumnCount(); i++) {
+            int columnType = metaData.getColumnType(i);
+
+            Object obj = resultSet.getObject(i);
+
+            if (null == obj) {
+                paramTypes[i - 1] = SQLTypeConverter.getNullForType(columnType);
+            } else {
+                paramTypes[i - 1] = SQLTypeConverter.getValueForType(resultSet, i, columnType);
+            }
+        }
+        return paramTypes;
+    }
+
+    /**
+     * Retrieve value of indexed field as an Object.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public Object object(int index) throws SQLException {
-        if ((index < 0) || (index >= rows.get(rowIndex).size())) {
-            throw new SQLException("Row index " + index + " is out of bounds, expected range is: 0 < index < " + rows.get(rowIndex).size());
+        if ((index < 0) || (index >= rowTypes.size())) {
+            throw new SQLException("Row index " + index + " is out of bounds, expected range is: 0 < index < " + rowTypes.size());
         }
-        return rows.get(rowIndex).get(index);
+        return rowTypes.get(index);
     }
 
     public Object object(String fieldName) throws SQLException {
@@ -77,11 +129,11 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a BigDecimal.
-     * 
+     * Retrieve value of indexed field as a BigDecimal.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public BigDecimal bigDecimal(int index) throws SQLException {
         return (BigDecimal) object(index);
@@ -92,11 +144,11 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a BigInteger.
-     * 
+     * Retrieve value of indexed field as a BigInteger.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public BigInteger bigInteger(int index) throws SQLException {
         return bigDecimal(index).toBigInteger();
@@ -107,11 +159,11 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a boolean.
-     * 
+     * Retrieve value of indexed field as a boolean.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public boolean isTrue(int index) throws SQLException {
         return Boolean.parseBoolean("" + object(index));
@@ -122,11 +174,11 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a byte.
-     * 
+     * Retrieve value of indexed field as a byte.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public byte singleByte(int index) throws SQLException {
         return (byte) object(index);
@@ -137,11 +189,11 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a double.
-     * 
+     * Retrieve value of indexed field as a double.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public double doubleValue(int index) throws SQLException {
         return Double.parseDouble("" + object(index));
@@ -152,11 +204,11 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a float.
-     * 
+     * Retrieve value of indexed field as a float.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public float floatValue(int index) throws SQLException {
         return Float.parseFloat("" + object(index));
@@ -167,11 +219,11 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a .
-     * 
+     * Retrieve value of indexed field as a .
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public int intValue(int index) throws SQLException {
         return (int) object(index);
@@ -182,11 +234,11 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a long value.
-     * 
+     * Retrieve value of indexed field as a long value.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public long longValue(int index) throws SQLException {
         return Long.parseLong("" + object(index));
@@ -197,11 +249,11 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a short value.
-     * 
+     * Retrieve value of indexed field as a short value.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public short shortValue(int index) throws SQLException {
         return Short.parseShort("" + object(index));
@@ -212,11 +264,11 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a java.time.LocalDateTime.
-     * 
+     * Retrieve value of indexed field as a java.time.LocalDateTime.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public LocalDateTime dateTime(int index) throws SQLException {
         return ((LocalDateTime) object(index));
@@ -227,14 +279,14 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a java.time.LocalDate.
-     * 
+     * Retrieve value of indexed field as a java.time.LocalDate.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public LocalDate date(int index) throws SQLException {
-        return ((java.sql.Date) object(index)).toLocalDate();
+        return ((Date) object(index)).toLocalDate();
     }
 
     public LocalDate date(String fieldName) throws SQLException {
@@ -242,11 +294,11 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a java.time.LocalTime.
-     * 
+     * Retrieve value of indexed field as a java.time.LocalTime.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public LocalTime time(int index) throws SQLException {
         return ((Time) object(index)).toLocalTime();
@@ -257,11 +309,11 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a java.time.Instant.
-     * 
+     * Retrieve value of indexed field as a java.time.Instant.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public Instant timestamp(int index) throws SQLException {
         return ((Timestamp) object(index)).toInstant();
@@ -272,11 +324,11 @@ public class ResultRows implements VO {
     }
 
     /**
-     * Retrieve value of current field as a String
-     * 
+     * Retrieve value of indexed field as a String
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public String string(int index) throws SQLException {
         if (object(index) instanceof Reader reader) {
@@ -297,13 +349,13 @@ public class ResultRows implements VO {
     public String string(String fieldName) throws SQLException {
         return string(fieldNames.indexOf(fieldName));
     }
-    
+
     /**
-     * Retrieve value of current field as a byte array.
-     * 
+     * Retrieve value of indexed field as a byte array.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public byte[] bytes(int index) throws SQLException {
         if (object(index) instanceof InputStream inputStream) {
@@ -322,32 +374,74 @@ public class ResultRows implements VO {
 
     /**
      * Retrieve the InputStream associated with the current row field.
-     * 
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
-    public InputStream inputStream(int index) throws SQLException {
-        if (object(index) instanceof InputStream inputStream) {
-            return inputStream;
+    public InputStream stream(int index) throws SQLException {
+        if (object(index) instanceof InputStream stream) {
+            return stream;
         }
-        throw new SQLException("ClassCastException: type " + object(index) + " (column index " + index + ") cannot be cast ti an InputStream");
+        throw new SQLException("ClassCastException: type " + object(index) + " (column index " + index + ") cannot be cast to an InputStream");
     }
 
-    public InputStream inputStream(String fieldName) throws SQLException {
-        return inputStream(fieldNames.indexOf(fieldName));
+    public InputStream stream(String fieldName) throws SQLException {
+        return stream(fieldNames.indexOf(fieldName));
+    }
+
+    /**
+     * Retrieve the Reader associated with the current row field.
+     *
+     * @param index
+     * @return
+     * @throws SQLException
+     */
+    public Reader reader(int index) throws SQLException {
+        if (object(index) instanceof Reader reader) {
+            return reader;
+        }
+        throw new SQLException("ClassCastException: type " + object(index) + " (column index " + index + ") cannot be cast to a Reader");
+    }
+
+    public Reader reader(String fieldName) throws SQLException {
+        return reader(fieldNames.indexOf(fieldName));
     }
 
     public int columnIndex(String fieldName) {
         return fieldNames.indexOf(fieldName);
     }
-    
-    public boolean next() {
-        return (((++rowIndex) >= 0) && (rowIndex < rows.size()));
+
+    public boolean next() throws SQLException {
+        rowTypes.clear();
+        if ((null != resultSet) && resultSet.next()) {
+
+            for (int i = 1; i <= metaData.getColumnCount(); i++) {
+                int columnType = metaData.getColumnType(i);
+
+                Object obj = resultSet.getObject(i);
+
+                if (null == obj) {
+                    rowTypes.add(SQLTypeConverter.getNullForType(columnType));
+                } else {
+                    rowTypes.add(SQLTypeConverter.getValueForType(resultSet, i, columnType));
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
-    public int size() {
-        return rows.size();
-    }
+    @Override
+    public void close() throws IOException, SQLException {
+        argumentTypes = null;
+        metaData = null;
+        argumentTypes = null;
+        rowTypes = null;
 
+        try (resultSet) {
+            try (statement) {
+            }
+        }
+    }
 }

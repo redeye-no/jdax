@@ -1,5 +1,6 @@
 package no.redeye.lib.jdax.jdbc;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -34,6 +35,7 @@ public class CallStackTests {
         assertExecuteUpdate();
         assertGetGeneratedKeys();
         assertGetNextKey();
+        assertClosePreparedStatement();
     }
 
     @Test
@@ -45,29 +47,31 @@ public class CallStackTests {
         assertExecuteUpdate();
         assertGetGeneratedKeys();
         assertGetNextKey();
+        assertClosePreparedStatement();
     }
 
     @Test
-    public void whenInsertValuesAndReturnSequenceFieldExpectUpdateAndGetGenerateKeys() throws SQLException {
+    public void whenInsertValuesAndReturnSequenceFieldExpectUpdateAndGetGenerateKeys() throws SQLException, IOException {
         DVODAO dao = new DVODAO(DS_NAME);
         Object[] values = new Object[]{"-1", "44", "four four"};
-        ResultRows vos = dao.selectAllNamedFieldsForSomeRows(values);
-
-        assertPrepareStatementWithQueryOnly();
-        assertExecuteQuery();
-        assertGetMetadata();
+        try (ResultRows results = dao.selectAllNamedFieldsForSomeRows(values)) {
+            assertPrepareStatementWithQueryOnly();
+            assertExecuteQuery();
+            assertGetMetadata();
+        }
+        assertCloseResultSet();
     }
 
     @Test
-    public void whenSimpleQueryReturnsExpectResultsetAndCallToNext() throws SQLException {
+    public void whenSimpleQueryReturnsExpectResultsetAndCallToClose() throws SQLException, IOException {
         DVODAO dao = new DVODAO(DS_NAME);
-        ResultRows vos = dao.selectAllNamedFields();
-
-        assertPrepareStatementWithQueryOnly();
-        assertExecuteQuery();
-        assertGetNextResultSet();
+        try (ResultRows results = dao.selectAllNamedFields()) {
+            assertPrepareStatementWithQueryOnly();
+            assertExecuteQuery();
+        }
+        assertCloseResultSet();
     }
-
+    
     @Test
     public void whenConnectionIsNotUsedThenExpectNoCommit() throws SQLException {
         Connector.commit(DS_NAME);
@@ -92,10 +96,10 @@ public class CallStackTests {
     private PreparedStatement ps;
 
     @Mock
-    protected ResultSet rs; 
+    protected ResultSet rs;
 
     @Mock
-    private ResultSet keys; 
+    private ResultSet keys;
 
     @Mock
     private ResultSetMetaData metaData;
@@ -172,6 +176,10 @@ public class CallStackTests {
         Mockito.verify(ps, Mockito.times(1)).getGeneratedKeys();
     }
 
+    protected void assertClosePreparedStatement() throws SQLException {
+        Mockito.verify(ps, Mockito.times(1)).close();
+    }
+
     protected void assertGetNextResultSet() throws SQLException {
         Mockito.verify(rs, Mockito.atLeast(1)).next();
     }
@@ -190,6 +198,10 @@ public class CallStackTests {
 
     protected void assertNoConnectionRollback() throws SQLException {
         Mockito.verify(connection, Mockito.times(0)).rollback();
+    }
+
+    protected void assertCloseResultSet() throws SQLException {
+        Mockito.verify(rs, Mockito.times(1)).close();
     }
 
 }
