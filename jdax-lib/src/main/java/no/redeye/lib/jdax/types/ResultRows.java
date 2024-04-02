@@ -1,353 +1,321 @@
 package no.redeye.lib.jdax.types;
 
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
-import no.redeye.lib.jdax.jdbc.SQLTypeConverter;
+import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Time;
-import java.sql.Timestamp;
+import java.sql.Statement;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.ZoneId;
+import no.redeye.lib.jdax.SQLTypeConverter;
 
 /**
- * A transfer object for SQL results
+ * A transfer object for SQL results. ResultRows provides a mechanism to:
+ * <li>retrieve query results, one row at a time</li>
+ * <li>retrieve row results as Java records</li>
  */
-public class ResultRows implements VO {
+public class ResultRows extends ResultSetType implements VO {
 
-    private final List<String> fieldNames = new ArrayList();
-    private final List<List> rows = new ArrayList();
-    private int rowIndex = -1;
-
-    public ResultRows(ResultSet rs) throws SQLException {
-        if (null != rs) {
-            ResultSetMetaData metaData = rs.getMetaData();
-
-            if (fieldNames.isEmpty()) {
-                for (int i = 1; i <= metaData.getColumnCount(); i++) {
-                    if (null != metaData.getColumnName(i)) {
-                        fieldNames.add(metaData.getColumnLabel(i).toLowerCase());
-                    }
-                }
-            }
-
-            while (rs.next()) {
-                List paramTypes = new ArrayList();
-                for (int i = 1; i <= metaData.getColumnCount(); i++) {
-                    int columnType = metaData.getColumnType(i);
-
-                    Object obj = rs.getObject(i);
-
-                    if (null == obj) {
-                        paramTypes.add(SQLTypeConverter.getNullForType(columnType));
-                    } else {
-                        paramTypes.add(SQLTypeConverter.getValueForType(rs, i, columnType));
-                    }
-                }
-                rows.add(paramTypes);
-            }
-        }
+    public ResultRows(ResultSet resultSet, Statement statement, boolean allowNulls) throws SQLException {
+        super(resultSet, statement, allowNulls);
     }
 
     /**
-     * Retrieve value of current field as an Object.
-     * 
-     * @param index
+     * Get the results of the current row as a Java record of the given type.
+     * This method requires that the row has values of the same type as the
+     * record expects.
+     *
+     * @param <T>
+     * @param returnType
+     * @param <?>
+     *
      * @return
-     * @throws SQLException 
+     *
+     * @throws java.sql.SQLException
      */
-    public Object object(int index) throws SQLException {
-        if ((index < 0) || (index >= rows.get(rowIndex).size())) {
-            throw new SQLException("Row index " + index + " is out of bounds, expected range is: 0 < index < " + rows.get(rowIndex).size());
+    public <T> T get(Class<T> returnType) throws SQLException {
+        try {
+            Object[] argumentValues = resultSetValues();
+            if (null == argumentTypes) {
+                argumentTypes = SQLTypeConverter.rowTypes(resultSet);
+            }
+            if (argumentValues.length != argumentTypes.length) {
+                throw new SQLException("DAOType expects " + argumentTypes.length + " parameters but ResultSet has " + argumentValues.length);
+            }
+            return returnType.getDeclaredConstructor(argumentTypes).newInstance(argumentValues);
+        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            throw new SQLException(e);
         }
-        return rows.get(rowIndex).get(index);
-    }
-
-    public Object object(String fieldName) throws SQLException {
-        return object(fieldNames.indexOf(fieldName));
     }
 
     /**
-     * Retrieve value of current field as a BigDecimal.
-     * 
+     * Create and return an Object[] with the ResultSet values in the order
+     * expected by the generic type constructor of the VO.
+     *
+     * @param rs
+     *
+     * @return
+     *
+     * @throws SQLException
+     */
+    private Object[] resultSetValues() throws SQLException {
+        Object[] paramTypes = new Object[metaData.getColumnCount()];
+        for (int i = 1; i <= metaData.getColumnCount(); i++) {
+            int columnType = metaData.getColumnType(i);
+
+            paramTypes[i - 1] = SQLTypeConverter.getValueForType(resultSet, i, columnType, allowNulls);
+        }
+        return paramTypes;
+    }
+
+    /**
+     * Retrieve value of indexed field as a BigDecimal.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public BigDecimal bigDecimal(int index) throws SQLException {
-        return (BigDecimal) object(index);
+        return getBigDecimal(index);
     }
 
     public BigDecimal bigDecimal(String fieldName) throws SQLException {
-        return bigDecimal(fieldNames.indexOf(fieldName));
+        return getBigDecimal(fieldName);
     }
 
     /**
-     * Retrieve value of current field as a BigInteger.
-     * 
+     * Retrieve value of indexed field as a boolean.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
-    public BigInteger bigInteger(int index) throws SQLException {
-        return bigDecimal(index).toBigInteger();
-    }
-
-    public BigInteger bigInteger(String fieldName) throws SQLException {
-        return bigDecimal(fieldNames.indexOf(fieldName)).toBigInteger();
-    }
-
-    /**
-     * Retrieve value of current field as a boolean.
-     * 
-     * @param index
-     * @return
-     * @throws SQLException 
-     */
-    public boolean isTrue(int index) throws SQLException {
-        return Boolean.parseBoolean("" + object(index));
+    public boolean booleanValue(int index) throws SQLException {
+        return getBoolean(index);
     }
 
     public boolean booleanValue(String fieldName) throws SQLException {
-        return isTrue(fieldNames.indexOf(fieldName));
+        return getBoolean(fieldName);
     }
 
     /**
-     * Retrieve value of current field as a byte.
-     * 
+     * Retrieve value of indexed field as a byte.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
-    public byte singleByte(int index) throws SQLException {
-        return (byte) object(index);
+    public byte byteValue(int index) throws SQLException {
+        return getByte(index);
     }
 
-    public byte singleByte(String fieldName) throws SQLException {
-        return singleByte(fieldNames.indexOf(fieldName));
+    public byte byteValue(String fieldName) throws SQLException {
+        return getByte(fieldName);
     }
 
     /**
-     * Retrieve value of current field as a double.
-     * 
+     * Retrieve value of indexed field as a double.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public double doubleValue(int index) throws SQLException {
-        return Double.parseDouble("" + object(index));
+        return getDouble(index);
     }
 
     public double doubleValue(String fieldName) throws SQLException {
-        return doubleValue(fieldNames.indexOf(fieldName));
+        return getDouble(fieldName);
     }
 
     /**
-     * Retrieve value of current field as a float.
-     * 
+     * Retrieve value of indexed field as a float.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public float floatValue(int index) throws SQLException {
-        return Float.parseFloat("" + object(index));
+        return getFloat(index);
     }
 
     public float floatValue(String fieldName) throws SQLException {
-        return floatValue(fieldNames.indexOf(fieldName));
+        return getFloat(fieldName);
     }
 
     /**
-     * Retrieve value of current field as a .
-     * 
+     * Retrieve value of indexed field as a .
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
-    public int intValue(int index) throws SQLException {
-        return (int) object(index);
+    public int integerValue(int index) throws SQLException {
+        return getInt(index);
     }
 
-    public int intValue(String fieldName) throws SQLException {
-        return intValue(fieldNames.indexOf(fieldName));
+    public int integerValue(String fieldName) throws SQLException {
+        return getInt(fieldName);
     }
 
     /**
-     * Retrieve value of current field as a long value.
-     * 
+     * Retrieve value of indexed field as a long value.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public long longValue(int index) throws SQLException {
-        return Long.parseLong("" + object(index));
+        return getLong(index);
     }
 
     public long longValue(String fieldName) throws SQLException {
-        return longValue(fieldNames.indexOf(fieldName));
+        return getLong(fieldName);
     }
 
     /**
-     * Retrieve value of current field as a short value.
-     * 
+     * Retrieve value of indexed field as a short value.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public short shortValue(int index) throws SQLException {
-        return Short.parseShort("" + object(index));
+        return getShort(index);
     }
 
     public short shortValue(String fieldName) throws SQLException {
-        return shortValue(fieldNames.indexOf(fieldName));
+        return getShort(fieldName);
     }
 
     /**
-     * Retrieve value of current field as a java.time.LocalDateTime.
-     * 
+     * Retrieve value of indexed field as a java.time.LocalDateTime.
+     *
      * @param index
+     * @param zone
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
-    public LocalDateTime dateTime(int index) throws SQLException {
-        return ((LocalDateTime) object(index));
+    public LocalDateTime dateTime(int index, ZoneId zone) throws SQLException {
+        return LocalDateTime.ofInstant(timestamp(index), zone);
     }
 
-    public LocalDateTime dateTime(String fieldName) throws SQLException {
-        return dateTime(fieldNames.indexOf(fieldName));
+    public LocalDateTime dateTime(String fieldName, ZoneId zone) throws SQLException {
+        return dateTime(fieldNames.indexOf(fieldName), zone);
     }
 
     /**
-     * Retrieve value of current field as a java.time.LocalDate.
-     * 
+     * Retrieve value of indexed field as a java.time.LocalDate.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public LocalDate date(int index) throws SQLException {
-        return ((java.sql.Date) object(index)).toLocalDate();
+        return getDate(index);
     }
 
     public LocalDate date(String fieldName) throws SQLException {
-        return date(fieldNames.indexOf(fieldName));
+        return getDate(fieldName);
     }
 
     /**
-     * Retrieve value of current field as a java.time.LocalTime.
-     * 
+     * Retrieve value of indexed field as a java.time.LocalTime.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public LocalTime time(int index) throws SQLException {
-        return ((Time) object(index)).toLocalTime();
+        return getTime(index);
     }
 
     public LocalTime time(String fieldName) throws SQLException {
-        return time(fieldNames.indexOf(fieldName));
+        return getTime(fieldName);
     }
 
     /**
-     * Retrieve value of current field as a java.time.Instant.
-     * 
+     * Retrieve value of indexed field as a java.time.Instant.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
     public Instant timestamp(int index) throws SQLException {
-        return ((Timestamp) object(index)).toInstant();
+        return getTimestamp(index);
     }
 
     public Instant timestamp(String fieldName) throws SQLException {
-        return timestamp(fieldNames.indexOf(fieldName));
+        return getTimestamp(fieldName);
     }
 
     /**
-     * Retrieve value of current field as a String
-     * 
+     * Retrieve value of indexed varchar
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
-    public String string(int index) throws SQLException {
-        if (object(index) instanceof Reader reader) {
-            try (BufferedReader br = new BufferedReader(reader)) {
-                final StringBuilder sb = new StringBuilder();
-                int b;
-                while (-1 != (b = br.read())) {
-                    sb.append((char) b);
-                }
-                return sb.toString();
-            } catch (IOException ioe) {
-                throw new SQLException(ioe);
-            }
-        }
-        return String.valueOf(object(index));
+    public String varchar(int index) throws SQLException {
+        return getString(index);
     }
 
-    public String string(String fieldName) throws SQLException {
-        return string(fieldNames.indexOf(fieldName));
+    public String varchar(String fieldName) throws SQLException {
+        return getString(fieldName);
     }
-    
+
     /**
-     * Retrieve value of current field as a byte array.
-     * 
+     * Retrieve value of indexed field as a byte array.
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
-    public byte[] bytes(int index) throws SQLException {
-        if (object(index) instanceof InputStream inputStream) {
-            try (InputStream is = inputStream) {
-                return is.readAllBytes();
-            } catch (IOException ioe) {
-                throw new SQLException(ioe);
-            }
-        }
-        return (byte[]) object(index);
+    public byte[] binary(int index) throws SQLException {
+        return getBytes(index);
     }
 
-    public byte[] bytes(String fieldName) throws SQLException {
-        return bytes(fieldNames.indexOf(fieldName));
+    public byte[] binary(String fieldName) throws SQLException {
+        return getBytes(fieldName);
     }
 
     /**
      * Retrieve the InputStream associated with the current row field.
-     * 
+     *
      * @param index
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
-    public InputStream inputStream(int index) throws SQLException {
-        if (object(index) instanceof InputStream inputStream) {
-            return inputStream;
-        }
-        throw new SQLException("ClassCastException: type " + object(index) + " (column index " + index + ") cannot be cast ti an InputStream");
+    public InputStream stream(int index) throws SQLException {
+        return getBinaryStream(index);
     }
 
-    public InputStream inputStream(String fieldName) throws SQLException {
-        return inputStream(fieldNames.indexOf(fieldName));
+    public InputStream stream(String fieldName) throws SQLException {
+        return getBinaryStream(fieldName);
     }
 
-    public int columnIndex(String fieldName) {
+    /**
+     * Retrieve the Reader associated with the current row field.
+     *
+     * @param index
+     * @return
+     * @throws SQLException
+     */
+    public Reader reader(int index) throws SQLException {
+        return getCharacterStream(index);
+    }
+
+    public Reader reader(String fieldName) throws SQLException {
+        return getCharacterStream(fieldName);
+    }
+
+    private int columnIndex(String fieldName) {
         return fieldNames.indexOf(fieldName);
-    }
-    
-    public boolean next() {
-        return (((++rowIndex) >= 0) && (rowIndex < rows.size()));
-    }
-
-    public int size() {
-        return rows.size();
     }
 
 }
