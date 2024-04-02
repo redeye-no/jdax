@@ -69,20 +69,13 @@
             <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <!-- https://mvnrepository.com/artifact/org.jooq/jooq -->
-        <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq</artifactId>
-            <scope>test</scope>
-        </dependency>
         
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
             <scope>test</scope>
-        </dependency>        
-        
+        </dependency>
+
     </dependencies>
       
 </project>

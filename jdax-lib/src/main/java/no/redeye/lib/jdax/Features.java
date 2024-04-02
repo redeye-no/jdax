@@ -1,9 +1,10 @@
-package no.redeye.lib.jdax.jdbc;
+package no.redeye.lib.jdax;
 
 /**
  * Flags used to declare which Connector features to use during execution.
  * <p>
  * {@link #USE_GENERATED_KEYS_FLAG}
+ * {@link #NULL_RESULTS_DISABLED}
  * {@link #AUTO_COMMIT_ENABLED}
  * {@link #AUTO_COMMIT_DISABLED}
  * {@link #READ_ONLY_MODE}
@@ -15,15 +16,20 @@ public enum Features {
      */
     USE_GENERATED_KEYS_FLAG, 
     /**
-     * set connection to auto-commit mode
+     * When provided, query results will avoid returning null values for null values in the DB.
+     * This allows calling apps to avoid checking for nulls.
+     */
+    NULL_RESULTS_DISABLED,
+    /**
+     * Set connection to auto-commit mode
      */
     AUTO_COMMIT_ENABLED, 
     /**
-     * disable connection auto-commit
+     * Disable connection auto-commit
      */
     AUTO_COMMIT_DISABLED,
     /**
-     * put connection in read-only mode
+     * Put connection in read-only mode
      */
     READ_ONLY_MODE;
 

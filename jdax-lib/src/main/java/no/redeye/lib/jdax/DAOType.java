@@ -1,7 +1,6 @@
 package no.redeye.lib.jdax;
 
 //import java.lang.reflect.Field;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -15,9 +14,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import no.redeye.lib.jdax.jdbc.Connector;
-import no.redeye.lib.jdax.jdbc.Features;
-import no.redeye.lib.jdax.jdbc.SQLTypeConverter;
 import no.redeye.lib.jdax.types.QueryInputs;
 import no.redeye.lib.jdax.types.QueryResults;
 import no.redeye.lib.jdax.types.ResultRows;
@@ -26,8 +22,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * DAOType is a data access class that parses and prepares SQL queries for execution.
- * This class provides convenience methods for all CRUD operations.
+ * DAOType is a data access class that parses and prepares SQL queries for
+ * execution. This class provides convenience methods for all CRUD operations.
  */
 public class DAOType {
 
@@ -38,7 +34,7 @@ public class DAOType {
     private final String DS_NAME;
 
     /**
-     * 
+     *
      * @param datasourceName The datasourceName associated datasource declared
      * in the Connector
      */
@@ -86,32 +82,22 @@ public class DAOType {
      * Execute select query with provided values and parameters.
      * <p>
      * <
-     * pre>select from something
-     * where thing = :values:</pre>
+     * pre>select from something where thing = :values:</pre>
      * <p>
      * <p>
      * <
-     * pre>select from something
-     * where thing = :wheres:
-     * and another in (:ins:)
-     * </pre>
-     * Example:
+     * pre>select from something where thing = :wheres: and another in (:ins:)
+     * </pre> Example:
      * <p>
      * <
-     * pre>select a ,b from thing
-     * where (c = ?
-     * and d in (??)
-     * and e in (??))
-     * or f = ?</pre>
+     * pre>select a ,b from thing where (c = ? and d in (??) and e in (??)) or f
+     * = ?</pre>
      * <p>
      * This query would then be implemented as:
      * <p>
      * <
-     * pre>select(new Object[] {c, f},
-     * new Object[][] {
-     * {"d1", "d2", "d3"},
-     * {e1, e2, e3}},
-     * query);</pre>
+     * pre>select(new Object[] {c, f}, new Object[][] { {"d1", "d2", "d3"}, {e1,
+     * e2, e3}}, query);</pre>
      *
      * @param values
      * @param ins
@@ -132,15 +118,16 @@ public class DAOType {
      *
      * @param clazz
      * @param sql
-     * @param returnFields field name whose value is returned as identity. If
-     * blank (""), then the default identity is returned.
+     * @param returnFields field name(s) whose value(s) will be returned as
+     * identity fields
      *
-     * @return identity value for the new record
+     * @return identities of inserted rows if returnFieldsis provided,
+     * otherwise, and empty list indicating a successful insert of 1 record.
      *
      * @throws SQLException
      */
     @SafeVarargs
-    public final long insertOne(VO clazz, String sql, String... returnFields) throws SQLException {
+    public final List<Long> insertOne(VO clazz, String sql, String... returnFields) throws SQLException {
         Object[] values = fields(clazz);
         return insertOne(values, sql, returnFields);
     }
@@ -152,25 +139,20 @@ public class DAOType {
      *
      * @param values
      * @param sql
-     * @param returnFields field name whose value is returned as identity
+     * @param returnFields field name(s) whose value(s) will be returned as
+     * identity fields
      *
-     * @return identities of inserted rows, or number of inserted rows if fields
-     * is null
+     * @return identities of inserted rows if returnFieldsis provided,
+     * otherwise, and empty list indicating a successful insert of 1 record.
      *
      * @throws SQLException
      */
     @SafeVarargs
-    public final long insertOne(Object[] values, String sql, String... returnFields) throws SQLException {
+    public final List<Long> insertOne(Object[] values, String sql, String... returnFields) throws SQLException {
         QueryInputs qi = buildQueryInputs(values, null, sql);
         QueryResults qr = executeInsert(qi, returnFields);
 
-        if (returnFields.length == 0) {
-            return qr.count();
-        }
-        if ((null != qr.ids()) && (!qr.ids().isEmpty())) {
-            return qr.ids().get(0);
-        }
-        return -1;
+        return (qr.count() == 1) ? List.of() : qr.ids(); // Empty list, means 1 record inserted
     }
 
     /**
@@ -187,7 +169,6 @@ public class DAOType {
     @SafeVarargs
     public final List<Long> insert(VO clazz, String sql, String... returnFields) throws SQLException {
         Object[] values = fields(clazz);
-        QueryInputs qi = buildQueryInputs(values, null, sql);
         return insert(values, sql, returnFields);
     }
 
@@ -270,10 +251,8 @@ public class DAOType {
      * Update table.
      * <p>
      * <
-     * pre>update something
-     * set thing1 = :values.1, thing2 = :values.2
-     * where another = :wheres:
-     * and another in (:ins:)</pre>
+     * pre>update something set thing1 = :values.1, thing2 = :values.2 where
+     * another = :wheres: and another in (:ins:)</pre>
      *
      * @param values - new values
      * @param wheres - where clause values
@@ -288,7 +267,7 @@ public class DAOType {
         QueryInputs qi = buildQueryInputs(values, wheres, ins, sql);
         return executeUpdate(qi).count();
     }
-
+    
     private QueryInputs buildQueryInputs(Object[] values, Object[] wheres, Object[][] ins, String sql) throws SQLException {
         if (null != values) {
             if (null != wheres) {
@@ -305,13 +284,13 @@ public class DAOType {
 
     private QueryInputs buildQueryInputs(Object[] wheres, Object[][] ins, String sql) throws SQLException {
         if (null == sql) {
-            throw new SQLException("Query statement is null");
+            throw new SQLException("Query statement is cannot be null");
         }
 
         StringBuilder bigQuery = new StringBuilder();
         List<Object> allValues = new ArrayList();
 
-        // Find all ? and ?? in query, then rebuild the final wheres array.
+        // Find all #, ? and ?? in query, then rebuild the final wheres array.
         // ? params are copied from the values input array,
         // ?? gets expanded to multiple comma-separated ?
         Matcher matcher = SQL_STATEMENT_PARAM_MARKERS.matcher(sql);
@@ -339,6 +318,13 @@ public class DAOType {
             String clause = match.replaceAll(",", "").trim().substring((isReplaceClause ? 1 : 0));
 
             if (isInClause) {
+                if (null == ins) {
+                    throw new SQLException("Query statement contains an IN clause but no parameters have been provided");
+                }
+                if (insArrayIndex >= ins.length) {
+                    throw new SQLException("Query statement contains an IN clause but infufficient number of parameters have been provided");
+                }
+                
                 // Convert IN clause markers to statement params.
                 // In: (??) Out: (?, ?, ?)
                 allValues.addAll(Arrays.asList(ins[insArrayIndex]));
@@ -362,11 +348,14 @@ public class DAOType {
                 // In: (#, ?) Out: (?)
                 valuesSrcIndex++;
             } else {
-                if ((null == wheres) || (wheres.length <= valuesSrcIndex)) {
-                    throw new SQLException("Insufficient number of values provided for query params");
+                if (null != wheres) {
+                    if (wheres.length <= valuesSrcIndex) {
+                        throw new SQLException("Insufficient number of values provided for query params");
+                    }
+                    // Copy params with no modifications.
+                    allValues.add(wheres[valuesSrcIndex]);
                 }
-                // Copy params with no modifications.
-                allValues.add(wheres[valuesSrcIndex]);
+
                 if (prependComma && !isFirstParam) {
                     bigQuery.append(", ");
                 }
@@ -383,7 +372,7 @@ public class DAOType {
         }
 
         Object[] values = allValues.toArray(new Object[0]);
-        return new QueryInputs(values, bigQuery.toString());
+        return new QueryInputs(values, bigQuery.toString().replaceAll("\\(,", "("));
     }
 
     private ResultRows executeQuery(QueryInputs qi) throws SQLException {
@@ -391,7 +380,8 @@ public class DAOType {
 
         PreparedStatement ps = Connector.connection(DS_NAME).prepareStatement(qi.sql());
         bind(ps, qi.values());
-        return new ResultRows(ps.executeQuery(), ps);
+        boolean allowNulls = !Connector.enabled(DS_NAME, Features.NULL_RESULTS_DISABLED);
+        return new ResultRows(ps.executeQuery(), ps, allowNulls);
     }
 
     private QueryResults executeInsert(QueryInputs qi, String[] fields) throws SQLException {
@@ -400,7 +390,7 @@ public class DAOType {
         PreparedStatement ps;
         if (Connector.enabled(DS_NAME, Features.USE_GENERATED_KEYS_FLAG)) {
             ps = Connector.connection(DS_NAME).prepareStatement(qi.sql(), Statement.RETURN_GENERATED_KEYS);
-        } else if (fields.length > 0) {
+        } else if ((null != fields) && (fields.length > 0) && (null != fields[0])) {
             ps = Connector.connection(DS_NAME).prepareStatement(qi.sql(), fields);
         } else {
             ps = Connector.connection(DS_NAME).prepareStatement(qi.sql());
@@ -430,12 +420,12 @@ public class DAOType {
                 // Retrieve the table identity number
                 try (ResultSet keys = ps.getGeneratedKeys()) {
                     List<Long> identities = new ArrayList();
-                    if (null != keys) {
-                        while (keys.next()) {
-                            identities.add(keys.getLong(1));
+                    if ((null != keys) && (keys.next())) {
+                        for (int i = 1; i <= keys.getMetaData().getColumnCount(); i++) {
+                            identities.add(keys.getLong(i));
                         }
                     }
-                    return new QueryResults(identities, 0); // 0, to satisfy disambiguate QueryResults(List<Long>)
+                    return new QueryResults(identities);
                 }
             }
         }
@@ -497,6 +487,9 @@ public class DAOType {
      * @throws InvocationTargetException
      */
     private Object[] fields(VO clazz) throws SQLException {
+        if (null == clazz) {
+            return null;
+        }
         Class classType = clazz.getClass();
         RecordComponent[] rcs = classType.getRecordComponents();
         if (null == rcs) {

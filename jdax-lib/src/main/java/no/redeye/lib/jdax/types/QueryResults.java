@@ -11,7 +11,7 @@ public record QueryResults(ResultRows records, List<Long> ids, int count) {
         this(records, null, 0);
     }
 
-    public QueryResults(List<Long> ids, int z) {
+    public QueryResults(List<Long> ids) {
         this(null, ids, 0);
     }
 

@@ -1,4 +1,4 @@
-package no.redeye.lib.jdax.jdbc;
+package no.redeye.lib.jdax;
 
 import java.sql.Connection;
 import java.sql.SQLException;

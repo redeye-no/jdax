@@ -1,4 +1,4 @@
-package no.redeye.lib.jdax.jdbc;
+package no.redeye.lib.jdax;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -7,10 +7,11 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.List;
 import java.util.function.Function;
 import javax.sql.DataSource;
-import no.redeye.lib.jdax.types.DVO;
-import no.redeye.lib.jdax.types.DVODAO;
+import no.redeye.lib.jdax.types.AllTypesRecord;
+import no.redeye.lib.jdax.types.TestDAO;
 import no.redeye.lib.jdax.types.ResultRows;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -24,12 +25,29 @@ import org.mockito.junit.jupiter.MockitoExtension;
 /**
  */
 @ExtendWith(MockitoExtension.class)
-public class CallStackTests {
+public class JDBCApiTests extends TestBase{
 
+    protected final AllTypesRecord VO = new AllTypesRecord(
+            ID, INTEGER_VALUE,
+            BIGINT_VALUE,
+            REAL_VALUE,
+            FLOAT_VALUE,
+            DOUBLE_VALUE,
+            DECIMAL_VALUE,
+            NUMERIC_VALUE,
+            DATE_VALUE,
+            TIME_VALUE,
+            TIMESTAMP_VALUE,
+            CHAR_VALUE,
+            VARCHAR_VALUE,
+            BLOB_VALUE,
+            CLOB_VALUE
+    );    
+    
     @Test
     public void whenInsertVOAndReturnIdentityFieldExpectUpdateAndGetGenerateKeys() throws SQLException {
-        DVODAO dao = new DVODAO(DS_NAME);
-        long id = dao.insertWithIdentityField(VO);
+        TestDAO dao = new TestDAO(DS_NAME);
+        List<Long> id = dao.insertWithIdentityField(VO);
 
         assertPrepareStatementWithQueryAndFields();
         assertExecuteUpdate();
@@ -40,8 +58,8 @@ public class CallStackTests {
 
     @Test
     public void whenInsertVOAndReturnSequenceFieldExpectUpdateAndGetGenerateKeys() throws SQLException {
-        DVODAO dao = new DVODAO(DS_NAME);
-        long id = dao.insertWithSequenceField(VO);
+        TestDAO dao = new TestDAO(DS_NAME);
+        List<Long> id = dao.insertWithSequenceField(VO);
 
         assertPrepareStatementWithQueryAndFields();
         assertExecuteUpdate();
@@ -52,7 +70,7 @@ public class CallStackTests {
 
     @Test
     public void whenInsertValuesAndReturnSequenceFieldExpectUpdateAndGetGenerateKeys() throws SQLException, IOException {
-        DVODAO dao = new DVODAO(DS_NAME);
+        TestDAO dao = new TestDAO(DS_NAME);
         Object[] values = new Object[]{"-1", "44", "four four"};
         try (ResultRows results = dao.selectAllNamedFieldsForSomeRows(values)) {
             assertPrepareStatementWithQueryOnly();
@@ -64,7 +82,7 @@ public class CallStackTests {
 
     @Test
     public void whenSimpleQueryReturnsExpectResultsetAndCallToClose() throws SQLException, IOException {
-        DVODAO dao = new DVODAO(DS_NAME);
+        TestDAO dao = new TestDAO(DS_NAME);
         try (ResultRows results = dao.selectAllNamedFields()) {
             assertPrepareStatementWithQueryOnly();
             assertExecuteQuery();
@@ -104,7 +122,7 @@ public class CallStackTests {
     @Mock
     private ResultSetMetaData metaData;
 
-    private final DVO VO = new DVO("1", "911", "nine one one");
+//    private final TestVO VO = new TestVO("1", "911", "nine one one");
 
     @BeforeEach
     public void setUp() throws Exception {
@@ -123,6 +141,7 @@ public class CallStackTests {
         Mockito.lenient().when(ps.getGeneratedKeys()).thenReturn(keys);
 
         Mockito.lenient().when(keys.next()).thenReturn(true);
+        Mockito.lenient().when(keys.getMetaData()).thenReturn(metaData);
 
         Mockito.lenient().when(metaData.getColumnCount()).thenReturn(3);
         Mockito.lenient().when(metaData.getColumnType(1)).thenReturn(Types.VARCHAR);

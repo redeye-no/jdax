@@ -273,10 +273,10 @@
                 <artifactId>mockito-junit-jupiter</artifactId>
                 <version>5.4.0</version>
             </dependency>
-            <dependency>
-                <groupId>org.jooq</groupId>
-                <artifactId>jooq</artifactId>
-                <version>3.18.4</version>
+            <dependency>            
+                <groupId>org.apache.derby</groupId>
+                <artifactId>derby</artifactId>
+                <version>10.14.2.0</version>
             </dependency>
             <!--
                 junit:junit for legacy test code
