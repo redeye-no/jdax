@@ -70,7 +70,7 @@ stored into the object cache and made available to the application.
 Each of these methods take inputs for specifying the query to run, query parameters, and result hints:
 
 | Method inputs | Description | Used in | Example |
-|---|---|
+|---|---|---|---|
 | `String sql` | An SQL statement to be executed | `insert()`, `insertOne()`, `select()`, `update()` | `select id, name from sku where id = ? and status in (?)` |
 | `Object[] values` | Values for use in the SQL statement | `insert()`, `insertOne()`, `select()`, `update()` | `new Object[]{ 127 }` |
 | `Object[] wheres` | Values used in SQL WHERE clauses | `select()`, `update()` | `new Object[]{ 213 }` |
@@ -83,8 +83,9 @@ Each of these methods take inputs for specifying the query to run, query paramet
 This document contains code and queries to illustrate how the library works. The table below shows what the DB looks like from this point on.
 
 Table: NUMBERS
+
 | id | scale | name |
-|---|---|
+|---|---|---|
 | `1` | `0` | `zero` |
 | `2` | `0` | `one` |
 | `3` | `1` | `ten` |
@@ -114,7 +115,7 @@ The code creates a DAOType for a given datasource, and uses it to run a select q
 
 ### Query syntax
 
-Each of the DAOType's insert, select, and update methods need a query to execute. 
+Each of the DAOType's insert, select, and update methods need a query to execute.
 These methods allow the calling applications to use either raw values, or POJOs as inputs to queries.
 
 The select operation in the next code block uses raw values provided in the Object[].
@@ -241,7 +242,7 @@ Let's see how each of the inputs are handled:
 
 #### Single ? parameters
 
-The Object[] values array 
+The Object[] values array
 
     Object[] values = new Object[]{ 101, 18, "quintillion", 9}
 
@@ -257,7 +258,7 @@ will be used to populate all simple parameters in the query:
 
 #### Multi ? parameters
 
-The Object[][] ins multidimensional array 
+The Object[][] ins multidimensional array
 
     Object[][] ins = new Object[][]{
             {1, 3, 5, 7, 9, 11, 13},
@@ -288,7 +289,7 @@ Basic insert statement
 returns a List of the numeric identity of the newly inserted record. The `fieldName` argument specifies what field values to return.
 If fieldName is not provided, then an empty List is returned.
 
-Some databases do not support the use of `fieldName` to specify the identity field. Setting the `Features.USE_GENERATED_KEYS_FLAG` 
+Some databases do not support the use of `fieldName` to specify the identity field. Setting the `Features.USE_GENERATED_KEYS_FLAG`
 can be used for those implementations, and the default identity will be returned instead.
 
 #### Update results
@@ -333,7 +334,7 @@ Alternatively, `ResultRows` can return row data as a Java object using the `Resu
 This library uses the following conversion table when working with the different SQL data types:
 
 | SQL type | Java type | Default for NULL |
-|---|---|
+|---|---|---|
 | VARCHAR   | java.lang.String | "" |
 | CHAR      | java.lang.String | "" |
 | LONGNVARCHAR | java.lang.String | "" |
