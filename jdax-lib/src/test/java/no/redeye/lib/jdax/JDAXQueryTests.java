@@ -8,6 +8,7 @@ import no.redeye.lib.jdax.types.ResultRows;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +33,7 @@ public class JDAXQueryTests extends JDAXFeaturesTestBase{
     }
     
     @Test
+    @DisplayName("When a record is INSERTed, expect a list of Longs")
     public void whenARecordIsInsertedExpectAListOfLongs() throws SQLException {
         List<Long> inserted = dbq.insertRow(TEST_RECORD_ALL_VALUES, INSERT_FULL_RECORD);
         Assertions.assertFalse(inserted.isEmpty());
@@ -39,6 +41,7 @@ public class JDAXQueryTests extends JDAXFeaturesTestBase{
     }
     
     @Test
+    @DisplayName("When a record is UPDATEd, expect the new values upon SELECT")
     public void whenARecordIsUpdatedExpectNewValuesUponSelect() throws SQLException, IOException {
         whenARecordIsInsertedExpectAListOfLongs();
         whenARecordIsInsertedExpectAListOfLongs();

@@ -12,7 +12,6 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
 import java.util.function.Function;
 import javax.sql.DataSource;
 import no.redeye.lib.jdax.sql.DBQueries;

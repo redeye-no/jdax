@@ -47,7 +47,7 @@ public class JDAXTypesTests extends JDAXFeaturesTestBase {
         try (ResultRows selects = dbq.select(new Object[]{id}, SELECT_TYPE
                 .replaceFirst("TEST_TABLE", "T_" + typeName))) {
             if (selects.next()) {
-                return (T) selects.object("field");
+                return (T) selects.getObject("field");
             }
         }
         return null;
