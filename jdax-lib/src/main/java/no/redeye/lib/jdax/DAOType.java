@@ -322,7 +322,7 @@ public class DAOType {
                     throw new SQLException("Query statement contains an IN clause but no parameters have been provided");
                 }
                 if (insArrayIndex >= ins.length) {
-                    throw new SQLException("Query statement contains an IN clause but infufficient number of parameters have been provided");
+                    throw new SQLException("Query statement contains more IN clauses than the parameters provided (" + ins.length + ")");
                 }
                 
                 // Convert IN clause markers to statement params.
