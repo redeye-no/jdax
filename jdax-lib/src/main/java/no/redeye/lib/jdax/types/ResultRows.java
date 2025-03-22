@@ -1,16 +1,16 @@
 package no.redeye.lib.jdax.types;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
-import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import no.redeye.lib.jdax.SQLTypeConverter;
 
@@ -74,126 +74,6 @@ public class ResultRows extends ResultSetType implements VO {
     }
 
     /**
-     * Retrieve value of indexed field as a BigDecimal.
-     *
-     * @param index
-     * @return
-     * @throws SQLException
-     */
-    public BigDecimal bigDecimal(int index) throws SQLException {
-        return getBigDecimal(index);
-    }
-
-    public BigDecimal bigDecimal(String fieldName) throws SQLException {
-        return getBigDecimal(fieldName);
-    }
-
-    /**
-     * Retrieve value of indexed field as a boolean.
-     *
-     * @param index
-     * @return
-     * @throws SQLException
-     */
-    public boolean booleanValue(int index) throws SQLException {
-        return getBoolean(index);
-    }
-
-    public boolean booleanValue(String fieldName) throws SQLException {
-        return getBoolean(fieldName);
-    }
-
-    /**
-     * Retrieve value of indexed field as a byte.
-     *
-     * @param index
-     * @return
-     * @throws SQLException
-     */
-    public byte byteValue(int index) throws SQLException {
-        return getByte(index);
-    }
-
-    public byte byteValue(String fieldName) throws SQLException {
-        return getByte(fieldName);
-    }
-
-    /**
-     * Retrieve value of indexed field as a double.
-     *
-     * @param index
-     * @return
-     * @throws SQLException
-     */
-    public double doubleValue(int index) throws SQLException {
-        return getDouble(index);
-    }
-
-    public double doubleValue(String fieldName) throws SQLException {
-        return getDouble(fieldName);
-    }
-
-    /**
-     * Retrieve value of indexed field as a float.
-     *
-     * @param index
-     * @return
-     * @throws SQLException
-     */
-    public float floatValue(int index) throws SQLException {
-        return getFloat(index);
-    }
-
-    public float floatValue(String fieldName) throws SQLException {
-        return getFloat(fieldName);
-    }
-
-    /**
-     * Retrieve value of indexed field as a .
-     *
-     * @param index
-     * @return
-     * @throws SQLException
-     */
-    public int integerValue(int index) throws SQLException {
-        return getInt(index);
-    }
-
-    public int integerValue(String fieldName) throws SQLException {
-        return getInt(fieldName);
-    }
-
-    /**
-     * Retrieve value of indexed field as a long value.
-     *
-     * @param index
-     * @return
-     * @throws SQLException
-     */
-    public long longValue(int index) throws SQLException {
-        return getLong(index);
-    }
-
-    public long longValue(String fieldName) throws SQLException {
-        return getLong(fieldName);
-    }
-
-    /**
-     * Retrieve value of indexed field as a short value.
-     *
-     * @param index
-     * @return
-     * @throws SQLException
-     */
-    public short shortValue(int index) throws SQLException {
-        return getShort(index);
-    }
-
-    public short shortValue(String fieldName) throws SQLException {
-        return getShort(fieldName);
-    }
-
-    /**
      * Retrieve value of indexed field as a java.time.LocalDateTime.
      *
      * @param index
@@ -202,7 +82,7 @@ public class ResultRows extends ResultSetType implements VO {
      * @throws SQLException
      */
     public LocalDateTime dateTime(int index, ZoneId zone) throws SQLException {
-        return LocalDateTime.ofInstant(timestamp(index), zone);
+        return LocalDateTime.ofInstant(getTimestamp(index), zone);
     }
 
     public LocalDateTime dateTime(String fieldName, ZoneId zone) throws SQLException {
@@ -210,108 +90,56 @@ public class ResultRows extends ResultSetType implements VO {
     }
 
     /**
-     * Retrieve value of indexed field as a java.time.LocalDate.
+     * Retrieve the value of a blob field as a byte array.
      *
      * @param index
      * @return
      * @throws SQLException
+     * @throws IOException
      */
-    public LocalDate date(int index) throws SQLException {
-        return getDate(index);
+    public byte[] blob(int index) throws SQLException, IOException {
+        try (InputStream inStream = getBinaryStream(index); ByteArrayOutputStream outStream = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[1024];
+            int n;
+            while ((n = inStream.read(buffer)) != -1) {
+                outStream.write(buffer, 0, n);
+            }
+            return outStream.toByteArray();
+        }
     }
 
-    public LocalDate date(String fieldName) throws SQLException {
-        return getDate(fieldName);
+    public byte[] blob(String fieldName) throws SQLException, IOException {
+        return blob(fieldNames.indexOf(fieldName));
     }
 
     /**
-     * Retrieve value of indexed field as a java.time.LocalTime.
+     * Retrieve value of a clob field as a String
      *
      * @param index
      * @return
      * @throws SQLException
+     * @throws IOException
      */
-    public LocalTime time(int index) throws SQLException {
-        return getTime(index);
+    public String clob(int index) throws SQLException, IOException {
+        Reader reader = getCharacterStream(index);
+        if (null == reader) {
+            return "";
+        }
+
+        StringWriter sw = new StringWriter();
+
+        try (BufferedReader br = new BufferedReader(reader)) {
+            char[] buffer = new char[1024];
+            int n;
+            while ((n = br.read(buffer)) != -1) {
+                sw.write(buffer, 0, n);
+            }
+        }
+        return sw.toString();
     }
 
-    public LocalTime time(String fieldName) throws SQLException {
-        return getTime(fieldName);
-    }
-
-    /**
-     * Retrieve value of indexed field as a java.time.Instant.
-     *
-     * @param index
-     * @return
-     * @throws SQLException
-     */
-    public Instant timestamp(int index) throws SQLException {
-        return getTimestamp(index);
-    }
-
-    public Instant timestamp(String fieldName) throws SQLException {
-        return getTimestamp(fieldName);
-    }
-
-    /**
-     * Retrieve value of indexed varchar
-     *
-     * @param index
-     * @return
-     * @throws SQLException
-     */
-    public String varchar(int index) throws SQLException {
-        return getString(index);
-    }
-
-    public String varchar(String fieldName) throws SQLException {
-        return getString(fieldName);
-    }
-
-    /**
-     * Retrieve value of indexed field as a byte array.
-     *
-     * @param index
-     * @return
-     * @throws SQLException
-     */
-    public byte[] binary(int index) throws SQLException {
-        return getBytes(index);
-    }
-
-    public byte[] binary(String fieldName) throws SQLException {
-        return getBytes(fieldName);
-    }
-
-    /**
-     * Retrieve the InputStream associated with the current row field.
-     *
-     * @param index
-     * @return
-     * @throws SQLException
-     */
-    public InputStream stream(int index) throws SQLException {
-        return getBinaryStream(index);
-    }
-
-    public InputStream stream(String fieldName) throws SQLException {
-        return getBinaryStream(fieldName);
-    }
-
-    /**
-     * Retrieve the Reader associated with the current row field.
-     *
-     * @param index
-     * @return
-     * @throws SQLException
-     */
-    public Reader reader(int index) throws SQLException {
-        return getCharacterStream(index);
-    }
-
-    public Reader reader(String fieldName) throws SQLException {
-        return getCharacterStream(fieldName);
+    public String clob(String fieldName) throws SQLException, IOException {
+        return clob(fieldNames.indexOf(fieldName));
     }
 
     private int columnIndex(String fieldName) {

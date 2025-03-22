@@ -81,9 +81,20 @@ public class JDBCApiTests extends TestBase{
     }
 
     @Test
-    public void whenSimpleQueryReturnsExpectResultsetAndCallToClose() throws SQLException, IOException {
+    public void whenSimpleQueryWithResultsReturnsExpectResultsetAndCallToClose() throws SQLException, IOException {
         TestDAO dao = new TestDAO(DS_NAME);
         try (ResultRows results = dao.selectAllNamedFields()) {
+            assertPrepareStatementWithQueryOnly();
+            assertExecuteQuery();
+        }
+        assertCloseResultSet();
+    }
+
+    @Test
+    public void whenSelectWithINsQueryReturnsExpectResultsetAndCallToClose() throws SQLException, IOException {
+        TestDAO dao = new TestDAO(DS_NAME);
+        Object[][] ins = new Object[][]{{"-1", "44", "four four"}};
+        try (ResultRows results = dao.selectOddIDs(ins)) {
             assertPrepareStatementWithQueryOnly();
             assertExecuteQuery();
         }

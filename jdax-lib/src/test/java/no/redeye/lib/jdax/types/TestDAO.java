@@ -60,8 +60,8 @@ public class TestDAO {
     }
 
     private static final String SELECT_IN_ODD = "select * from dvo where id in (??)";
-    public ResultRows selectOddIDs(Object[] values, Object[][] ins) throws SQLException {
-        return dao.select(values, SELECT_IN_ODD, ins);
+    public ResultRows selectOddIDs(Object[][] ins) throws SQLException {
+        return dao.select(SELECT_IN_ODD, ins);
     }
 
     private static final String SELECT_ONE_ID = "select * from dvo where id = ?";

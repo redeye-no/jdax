@@ -105,8 +105,8 @@ To run queries against the DB, an application will need an instance of the DAOTy
         try (ResultRows results = dao.select(new Object[]{ id }, SELECT_BY_ID)) {
             while (results.next()) {
                 print(
-                    results.integerValue("id"), 
-                    results.varchar("name"));
+                    results.getInt("id"), 
+                    results.getString("name"));
             }
         }
     }
@@ -317,8 +317,15 @@ Select statements always return `ResultRows`, which allow the calling applicatio
 
     while (rows.next()) {
         print(
-            rows.integerValue("id"),
-            rows.varchar("name")
+            rows.getInt("id"),
+            rows.getString("name")
+        );
+    }
+
+    while (rows.next()) {
+        print(
+            rows.getInt("id"),
+            rows.getString("name")
         );
     }
 
@@ -360,5 +367,13 @@ This library uses the following conversion table when working with the different
 | CLOB      | java.io.Reader | empty Reader |
 | (other)   | Object | null |
 
+JDAX auto-scaling feature provides for simple conversion of numeric fields. For instance,
+a BigDecimal field can be retrieved as an int:
+
+    while (rows.next()) {
+        BigDecimal bigPopulation = rows.getInt("big_decimal_field");
+        int localPopulation = rows.getInt("big_decimal_field");
+    }
+
 The "Default for NULL" column lists the values returned for null fields when the Features.NULL_RESULTS_DISABLED flag is set.
-This allows application to run safely without having to implement null checks for rturned fields.
+This allows application to run safely without having to implement null checks for returned fields.
