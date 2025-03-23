@@ -100,6 +100,7 @@ try (ResultRows users = dt.select("select * from users")) {
 }
 ```
 
+[Supported data types](docs/types.md)
 [More query variants](docs/queries.md)
 
 
@@ -120,7 +121,7 @@ can be used for those implementations, and the default identity will be returned
 
 [More advanced queries](docs/queries.md)
 
-#### Update records
+#### Updating records
 
 Basic update statement
 
@@ -129,4 +130,6 @@ Object[] values = new Object[]{ "name", 127};
 int updated = dao.update(values, "update users set name = ?, where id = ?)");
 ```
 
-This returns the number of updated records. values contains all the values for query input parameters.
+This returns the number of updated records. The `values` array contains the actual values for query input parameters.
+
+[Advanced queries](docs/queries.md)

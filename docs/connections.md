@@ -36,3 +36,15 @@ Example:
 DataSource dataSource = new HikariDataSource(new new HikariConfig());
 Connector.prepare("ds-users", dataSource, Features.AUTO_COMMIT_ENABLED);
 ```
+
+With this connection, queries will be committed automatically.
+The API allows for multiple features to be specified together.
+
+```java
+Connector.prepare("ds-users", dataSource, 
+    Features.AUTO_COMMIT_ENABLED, 
+    Features.USE_GENERATED_KEYS_FLAG,
+    Features.NULL_RESULTS_DISABLED);
+```
+
+[Main documentation](../README.md)
