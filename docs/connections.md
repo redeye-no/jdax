@@ -1,9 +1,5 @@
-# Markdown for Netbeans ![Description Here](https://raw.githubusercontent.com/moacirrf/netbeans-markdown/main/images/nblogo48x48.png)
 
-***
-
-
-## Establishing a Connection
+# Establishing a Connection
 
 The first call to the API must configure the connection parameters. This is done through the `Connector` class.
 
@@ -20,7 +16,45 @@ Connector.prepare(dsName, DataSource, Features);
 
 One takes a function that returns a DataSource, the other takes a configured DataSource.
 
-The optional `Features` are used for setting various connection flags.
+### Using a DataSource
+
+```java
+    private synchronized DataSource dataSource() {
+        return new HikariDataSource(config());
+    }
+
+    private HikariConfig config() {
+        HikariConfig config = new HikariConfig();
+        config.setDriverClassName("org.apache.derby.jdbc.EmbeddedDriver");
+        config.setMaximumPoolSize(8);
+        config.setMinimumIdle(2);
+        config.setJdbcUrl("jdbc:derby:memory:jdaxdb;create=true");
+        return config;
+    }
+```
+
+```java
+Connector.prepare("MY_DATASOURCE", dataSource());
+```
+
+### Using a DataSourceFunction
+
+```java
+        DataSource dataSource = dataSource();
+
+        Function<String, DataSource> dsCreator = new Function<String, DataSource>() {
+            @Override
+            public DataSource apply(String t) {
+                return dataSource;
+            }
+        };
+
+        Connector.prepare("MY_DATASOURCE", dsCreator);
+```
+
+## Features
+
+`Features` are used for setting various connection flags.
 
 | Feature | Flag |
 |---|---|
