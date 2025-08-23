@@ -1,10 +1,16 @@
 package no.redeye.lib.jdax.sql;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import no.redeye.lib.jdax.DAOType;
 import no.redeye.lib.jdax.types.ResultRows;
 import no.redeye.lib.jdax.types.VO;
@@ -43,76 +49,50 @@ public class DBQueries {
     }
     
     // --
-     
-    private static final String INSERT_TEST_TYPE_0 = """
-                                                       INSERT INTO TEST_TABLE (number10_0, number10_2, number19, number20, string, daten,timestampn ) 
-                                                       VALUES (1010101010, 10101010.01, 1234567890123456789, 12345678901234567890, 'stringz',
-                                                       	DATE '2017-11-14', 
-                                                       	SYSTIMESTAMP 
-                                                       )""";
+    private static final Map<Class<?>, Integer> JAVA_TO_JDBC_TYPE = Map.ofEntries(
+            Map.entry(BigDecimal.class, Types.DECIMAL),
+            Map.entry(BigInteger.class, Types.NUMERIC),
+            Map.entry(Boolean.class, Types.BOOLEAN), // safer than BIT
+            Map.entry(Double.class, Types.DOUBLE),
+            Map.entry(Float.class, Types.REAL),
+            Map.entry(Integer.class, Types.INTEGER),
+            Map.entry(Long.class, Types.BIGINT),
+            Map.entry(Short.class, Types.SMALLINT),
+            Map.entry(String.class, Types.VARCHAR),
+            // Java Time API
+            Map.entry(Instant.class, Types.TIMESTAMP),
+            Map.entry(LocalDate.class, Types.DATE),
+            Map.entry(LocalTime.class, Types.TIME),
+            Map.entry(LocalDateTime.class, Types.TIMESTAMP),
+            // JDBC SQL types
+            Map.entry(java.sql.Date.class, Types.DATE),
+            Map.entry(java.sql.Time.class, Types.TIME),
+            Map.entry(java.sql.Timestamp.class, Types.TIMESTAMP)
+    );
 
-    public List<Long> insertTestType_0() throws SQLException {
-        return dao.insertOne(new Object[]{-1}, INSERT_TEST_TYPE_0);
-    }
-
-    private static final String INSERT_TEST_TYPE = """
-                                                       INSERT INTO TEST_TABLE (number10_0, number10_2, number19, number20, string, daten, timestampn, blobu, klobu) 
-                                                       VALUES (?,?,?,?,?,?,?,?,?)""";
-    
-    public List<Long> insertTestTypeGetDefaultID() throws SQLException {
-        return dao.insertOne(new Object[]{1010101010, 10101010.01d, 1234567890123456789l, new BigDecimal("12345678901234567890"), "stringz", LocalDate.now().plusDays(7), Instant.now(), new byte[]{33, 34, 35, 36, 37}, "chichi ching ching"}, 
-                INSERT_TEST_TYPE);
-    }
-    
-    public List<Long> insertTestTypeGetNamedID() throws SQLException {
-        return dao.insertOne(new Object[]{1010101010, 10101010.01d, 1234567890123456789l, new BigDecimal("12345678901234567890"), "stringz", LocalDate.now().plusDays(7), Instant.now(), new byte[]{33, 34, 35, 36, 37}, "chichi ching ching"}, 
-                INSERT_TEST_TYPE,
-                "number10", "number19");
-//                "number10_0", "number19");
-    }
-    
-    private static final String INSERT_VO_TYPE = """
-                                                       INSERT INTO TEST_TABLE (number10_0, number10_2, number19, number20,string, blobu, klobu) 
-                                                       VALUES (#,?,?,?,?,?,?,?)""";    
-    public List<Long> insertTestVO(VO vo) throws SQLException {
-        return dao.insertOne(vo, INSERT_VO_TYPE);
-    }
-
-    private static final String SELECT_SOME_TEST_TABLE = "SELECT number10, string, blobu FROM test_types ORDER BY timestampn ASC";
-
-    public ResultRows selectSomeTestTypes() throws SQLException {
-        return dao.select((VO)null, SELECT_SOME_TEST_TABLE);
-//        return dao.select(new Object[]{}, SELECT_SOME_TEST_TABLE);
-    }
-
-    private static final String UPDATE_SOME_TEST_TABLE = "UPDATE test_types SET  number10_2 = ?, string = ? WHERE number10_0 = ?";
-
-    public int update() throws SQLException {
-        return dao.update(
-                new Object[]{}, 
-                UPDATE_SOME_TEST_TABLE);
-    }
-    
-    private static final String UPDATE_WHERE = "UPDATE test_types SET  number10_2 = ?, string = ? WHERE number10_0 = ?";
-    
-    public int updateWhere() throws SQLException {
-        return dao.update(
-                new Object[]{ 2048, "" + LocalDate.now()}, 
-                new Object[]{ 1024 }, 
-                UPDATE_WHERE);
-    }
-
-    private static final String UPDATE_WHERE_INS = "UPDATE test_types SET  number10_2 = ?, string = ? WHERE number10_0 = ? AND number10_2 IN (??)";
-    
-    public int updateWhereIns() throws SQLException {
-        return dao.update(
-                new Object[]{ 2048, "" + LocalDate.now()}, 
-                new Object[]{ 1024 }, 
-                UPDATE_WHERE_INS, 
-                new Object[]{ 10101010.01 });
-    }
-    
-    
+    private static final Map<Class<?>, String> JAVA_TO_SQL_TYPE = Map.ofEntries(
+            // Numbers
+            Map.entry(BigDecimal.class, "DECIMAL"),
+            Map.entry(BigInteger.class, "NUMERIC"),
+            Map.entry(Double.class, "DOUBLE"),
+            Map.entry(Float.class, "REAL"),
+            Map.entry(Integer.class, "INTEGER"),
+            Map.entry(Long.class, "BIGINT"),
+            Map.entry(Short.class, "SMALLINT"),
+            // Boolean
+            Map.entry(Boolean.class, "BOOLEAN"),
+            // Strings
+            Map.entry(String.class, "VARCHAR(255)"),
+            // Legacy JDBC date/time types
+            Map.entry(java.sql.Date.class, "DATE"),
+            Map.entry(java.sql.Time.class, "TIME"),
+            Map.entry(java.sql.Timestamp.class, "TIMESTAMP"),
+            // java.time API
+            Map.entry(LocalDate.class, "DATE"),
+            Map.entry(LocalTime.class, "TIME"),
+            Map.entry(LocalDateTime.class, "TIMESTAMP"),
+            Map.entry(Instant.class, "TIMESTAMP")
+    );
     
     private static final String CREATE_TEST_TABLE = """
         CREATE TABLE TEST_TABLE (
@@ -131,37 +111,33 @@ public class DBQueries {
     public int createTestTables() throws SQLException {
         return dao.update(new Object[]{-1}, CREATE_TEST_TABLE);
     }
-    
-    private static final String _CREATE_TYPES_TABLE = """
-        CREATE TABLE TEST_TABLE (
-        id INTEGER GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1) PRIMARY KEY,
-        intfield INTEGER NOT NULL,
-        bigintfield BIGINT NOT NULL,
-        bigdecimalfield DECIMAL(20) NOT NULL,
-        stringfield VARCHAR(20),
-        datefield DATE,
-        timestampfield TIMESTAMP,
-        blobfield BLOB,
-        clobfield CLOB
-    )""";
-    
-    private static final String CREATE_SINGLETYPE_TABLE = """
-        CREATE TABLE TYPES_TEST_TABLE (
+        
+    private static final String CREATE_SINGLETYPE_TABLE_TEMPLATE = """
+        CREATE TABLE %s (
         id INTEGER PRIMARY KEY,
-        field COLUMN_TYPE
+        field %s
     )""";
     
-    public int createSingleTypeTable(String typeName) throws SQLException {
-        return dao.update(
-                new Object[]{-1}, 
-                CREATE_SINGLETYPE_TABLE
-                        .replaceFirst("TYPES_TEST_TABLE", "T_" + typeName)
-                        .replaceFirst("COLUMN_TYPE", typeName));
+    private int createSingleTypeTable(String typeName) throws SQLException {
+        String tableName = "T_" + typeName.toUpperCase();
+        String ddl = String.format(CREATE_SINGLETYPE_TABLE_TEMPLATE, tableName, typeName);
+        return dao.update(new Object[]{-1}, ddl);
     }
 
+    public String createSingleTypeTable(Class<?> javaType) throws SQLException {
+        String sqlType = JAVA_TO_SQL_TYPE.get(javaType);
+        if (null == sqlType) {
+            throw new IllegalArgumentException("No SQL type mapping for " + javaType);
+        }
+
+        String tableName = "T_" + javaType.getSimpleName().toUpperCase(Locale.ROOT);
+        String ddl = String.format(CREATE_SINGLETYPE_TABLE_TEMPLATE, tableName, sqlType);
+        dao.update(new Object[]{-1}, ddl);
+        return tableName;
+    }
     
-    private static final String CREATE_MULTITYPES_TABLE = """
-        CREATE TABLE TEST_TABLE (
+    private static final String CREATE_MULTITYPES_TABLE_TEMPLATE = """
+        CREATE TABLE %s (
         id INTEGER GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1) PRIMARY KEY,
         integerField INT,
         bigintField BIGINT,
@@ -181,6 +157,7 @@ public class DBQueries {
     
     
     public int createMultiTypesTable(String tableName) throws SQLException {
-        return dao.update(new Object[]{-1}, CREATE_MULTITYPES_TABLE.replaceFirst("TEST_TABLE", tableName));
+        String ddl = String.format(CREATE_MULTITYPES_TABLE_TEMPLATE, tableName);
+        return dao.update(new Object[]{-1}, ddl);
     }
 }
