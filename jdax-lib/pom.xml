@@ -3,13 +3,13 @@
     <groupId>no.redeye</groupId>
     <artifactId>jdax-lib</artifactId>
     <packaging>jar</packaging>
-  
+
     <parent>
         <groupId>no.redeye</groupId>
         <artifactId>jdax</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
-    
+
     <licenses>
         <license>
             <name>MIT License</name>
@@ -17,18 +17,17 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
-    
+
     <properties>
         <java-source-version>17</java-source-version>
         <java-target-version>17</java-target-version>
     </properties>
-        
+
     <dependencies>
 
         <!-- ############################################################################# -->
         <!-- File logging dependencies -->
-        
-        <!-- Start: libs switching completely to l4j2 -->
+
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
@@ -39,37 +38,27 @@
             <artifactId>log4j-core</artifactId>
             <scope>provided</scope>
         </dependency>
-        <!-- End: libs switching completely to l4j2 -->
 
-        <!-- Log4j 1.x bridge -->
-        <!-- The bridge is required to support code that still uses log4j1 API.
-        This includes all libraries added as dependencies -->
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-1.2-api</artifactId>
-            <scope>compile</scope>
-        </dependency>
-        <!-- /Log4j 1.x bridge -->
-                     
+        <!-- ############################################################################# -->
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-                
+
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
             <scope>test</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>org.apache.derby</groupId>
             <artifactId>derby</artifactId>
@@ -77,5 +66,5 @@
         </dependency>
 
     </dependencies>
-      
+
 </project>
