@@ -89,6 +89,9 @@ public abstract class ResultSetType implements AutoCloseable {
     public Object getObject(String fieldName) throws SQLException {
         return object(fieldName, Integer.MAX_VALUE);
     }
+    public Object getObject(String fieldName, int returnType) throws SQLException {
+        return object(fieldName, returnType);
+    }
     private Object object(String fieldName, int returnType) throws SQLException {
         return getObject(fieldNames.indexOf(fieldName), returnType);
     }
@@ -117,7 +120,7 @@ public abstract class ResultSetType implements AutoCloseable {
      * @throws SQLException
      */
     public BigDecimal getBigDecimal(int index) throws SQLException {
-        return (BigDecimal) getObject(index);
+        return (BigDecimal) getObject(index,Types.DECIMAL);
     }
 
     public BigDecimal getBigDecimal(String fieldName) throws SQLException {
@@ -253,7 +256,7 @@ public abstract class ResultSetType implements AutoCloseable {
      * @throws SQLException
      */
     public LocalDate getDate(int index) throws SQLException {
-        return (LocalDate) getObject(index);
+        return (LocalDate) getObject(index,Types.DATE);
     }
 
     public LocalDate getDate(String fieldName) throws SQLException {
@@ -268,7 +271,7 @@ public abstract class ResultSetType implements AutoCloseable {
      * @throws SQLException
      */
     public LocalTime getTime(int index) throws SQLException {
-        return (LocalTime) getObject(index);
+        return (LocalTime) getObject(index,Types.TIME);
     }
 
     public LocalTime getTime(String fieldName) throws SQLException {
@@ -283,7 +286,7 @@ public abstract class ResultSetType implements AutoCloseable {
      * @throws SQLException
      */
     public Instant getTimestamp(int index) throws SQLException {
-        return (Instant) getObject(index);
+        return (Instant) getObject(index,Types.TIMESTAMP);
     }
 
     public Instant getTimestamp(String fieldName) throws SQLException {
@@ -298,7 +301,7 @@ public abstract class ResultSetType implements AutoCloseable {
      * @throws SQLException
      */
     public String getString(int index) throws SQLException {
-        return (String) getObject(index);
+        return (String) getObject(index,Types.VARCHAR);
     }
 
     public String getString(String fieldName) throws SQLException {
