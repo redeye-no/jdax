@@ -31,7 +31,7 @@ public class TypeRegistry {
         Object apply(Object value) throws SQLException;
     }
 
-    // Conversion registry: from -> (to -> converter)
+    // Conversion registry
     private static final Map<Integer, Map<Class<?>, Converter>> CONVERSIONS = new HashMap<>();
 
     // Map SQL types to canonical Java type
@@ -41,7 +41,6 @@ public class TypeRegistry {
             Map.entry(Types.BIT, Boolean.class),
             Map.entry(Types.BLOB, InputStream.class),
             Map.entry(Types.BOOLEAN, Boolean.class),
-            //            Map.entry(Types.CHAR, String.class),
             Map.entry(Types.CHAR, Character[].class),
             Map.entry(Types.CLOB, Reader.class),
             Map.entry(Types.DATE, java.time.LocalDate.class),
@@ -66,7 +65,7 @@ public class TypeRegistry {
             Map.entry(Types.VARCHAR, String.class)
     );
 
-    // Primitive <-> wrapper mapping
+    // Primitive -> wrapper mapping
     private static final Map<Class<?>, Class<?>> PRIMITIVE_TO_WRAPPER = Map.ofEntries(
             Map.entry(boolean.class, Boolean.class),
             Map.entry(byte.class, Byte.class),
@@ -80,53 +79,6 @@ public class TypeRegistry {
 
     static {
         // Conversions register for SQL->Java types.
-        /*
-ARRAY			= 2003;
-BIGINT			= -5;
-BINARY			= -2;
-BIT			= -7;
-BLOB			= 2004;
-BOOLEAN			= 16;
-CHAR			= 1;
-CLOB			= 2005;
-DATALINK		= 70;
-DATE			= 91;
-DECIMAL			= 3;
-DISTINCT		= 2001;
-DOUBLE			= 8;
-FLOAT			= 6;
-INTEGER			= 4;
-JAVA_OBJECT		= 2000;
-LONGVARBINARY		= -4;
-NULL			= 0;
-NUMERIC			= 2;
-NVARCHAR		= -9;
-OTHER			= 1111;
-REAL			= 7;
-REF			= 2006;
-SMALLINT		= 5;
-STRUCT			= 2002;
-TIME			= 92;
-TIMESTAMP		= 93;
-TINYINT			= -6;
-VARBINARY		= -3;
-VARCHAR			= 12;
-
-JDBC 4.0
---------
-LONGNVARCHAR		= -16;
-NCHAR			= -15;
-NCLOB			= 2011;
-LONGVARCHAR		= -1;
-ROWID			= -8;
-SQLXML			= 2009;
-
-JDBC 4.2
---------
-REF_CURSOR		= 2012;
-TIME_WITH_TIMEZONE	= 2013;
-TIMESTAMP_WITH_TIMEZONE	= 2014;        
-         */
         register(Types.DECIMAL, BigInteger.class, v -> ((BigDecimal) v).toBigInteger());
         register(Types.DECIMAL, Integer.class, v -> ((BigDecimal) v).intValue());
         register(Types.DECIMAL, Long.class, v -> ((BigDecimal) v).longValue());
@@ -223,7 +175,8 @@ TIMESTAMP_WITH_TIMEZONE	= 2014;
                 .collect(Collectors.joining())); // No convert
         register(Types.CHAR, Character[].class, v -> (Character[]) v); // No convert
         register(Types.CHAR, Void.class, v -> ""); // Null/void
-//
+
+        // Binary
         register(Types.BINARY, BigInteger.class, v -> new BigInteger((byte[]) v));
         register(Types.BINARY, Byte.class, v -> (byte[]) v);
         register(Types.BINARY, Void.class, v -> "");
@@ -242,7 +195,6 @@ TIMESTAMP_WITH_TIMEZONE	= 2014;
                 throw new UncheckedIOException(e);
             }
         });
-//        register(Types.BLOB, Blob.class, v ->  v); // No can do!
         register(Types.BLOB, Void.class, v -> new EmptyStream()); // Null/void
 
         // Readers
@@ -252,15 +204,30 @@ TIMESTAMP_WITH_TIMEZONE	= 2014;
             }
             return (Reader) v;
         });
-//        register(Types.CLOB, Clob.class, v ->  v); // No can do
         register(Types.CLOB, Void.class, v -> new StringReader("")); // Null/void
+
+        // Unsupported types
+        register(Types.ARRAY, Void.class, v -> v);
+        register(Types.DATALINK, Void.class, v -> v);
+        register(Types.DISTINCT, Void.class, v -> v);
+        register(Types.JAVA_OBJECT, Void.class, v -> v);
+        register(Types.NULL, Void.class, v -> v);
+        register(Types.OTHER, Void.class, v -> v);
+        register(Types.REF, Void.class, v -> v);
+        register(Types.STRUCT, Void.class, v -> v);
+
+        // Unsupported types JDBC 4.0
+        register(Types.ROWID, Void.class, v -> v);
+        register(Types.SQLXML, Void.class, v -> v);
+
+        // Unsupported types JDBC 4.2
+        register(Types.REF_CURSOR, Void.class, v -> v);
     }
 
     private static void register(int from, Class<?> to, Converter fn) {
         CONVERSIONS.computeIfAbsent(from, k -> new HashMap<>()).put(to, fn);
     }
 
-    // --- Public API ---
     /**
      * Check if a value of type 'from' can be assigned/converted to 'to'
      *
@@ -278,20 +245,19 @@ TIMESTAMP_WITH_TIMEZONE	= 2014;
      * Convert value to requested type
      *
      * @param value
-     * @param sourceType
-     * @param targetType
+     * @param from
+     * @param to
      *
      * @return
      *
      * @throws java.sql.SQLException
      */
-    public static Object scaleToType(Object value, int sourceType, Class<?> targetType) throws SQLException {
-        targetType = normalize(targetType);
-        return convert(value, sourceType, targetType);
-    }
+    public static Object scaleToType(Object value, int from, Class<?> to) throws SQLException {
+        Class<?> targetType = normalize(to);
 
-    private static Object convert(Object value, int from, Class<?> targetType) throws SQLException {
         if (null == value) {
+            // For null values, force Void.class
+            // to trigger "default for null"
             targetType = Void.class;
         }
 
@@ -307,6 +273,9 @@ TIMESTAMP_WITH_TIMEZONE	= 2014;
     }
 
     private static Class<?> normalize(Class<?> type) {
+        if (null == type) {
+            type = Void.class;
+        }
         if (type.isPrimitive()) {
             return PRIMITIVE_TO_WRAPPER.get(type);
         }

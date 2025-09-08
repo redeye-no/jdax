@@ -116,7 +116,7 @@ public class JDAXScaleTests {
         Mockito.when(mockResultSet.getBigDecimal(1)).thenReturn(null);
 
         ResultRows nullRow = assertTypeScaling(Types.DECIMAL, Types.INTEGER, null, true);
-        ResultRows defaultRow = assertTypeScaling(Types.DECIMAL, Types.INTEGER, 0, false);
+        ResultRows defaultRow = assertTypeScaling(Types.DECIMAL, Types.DECIMAL, BigDecimal.ZERO, false);
 
         try {
             Assertions.assertNotNull(resultRowsGet.apply(defaultRow), "Expected non-null for defaultRow");

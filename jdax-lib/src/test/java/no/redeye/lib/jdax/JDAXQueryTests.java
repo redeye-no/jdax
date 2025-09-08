@@ -9,8 +9,10 @@ import no.redeye.lib.jdax.types.NumericTypesRecord;
 import no.redeye.lib.jdax.types.ResultRows;
 import no.redeye.lib.jdax.types.TemporalTypesRecord;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -25,9 +27,16 @@ public class JDAXQueryTests extends JDAXFeaturesTestBase {
 
     @BeforeAll
     public void setUp() throws SQLException {
-        setUpTest(TEST_RECORD_ALL_VALUES, INSERT_FULL_RECORD, "TEST_TABLE",
-                Features.AUTO_COMMIT_ENABLED,
+        setUpDS(Features.NULL_RESULTS_DISABLED,Features.AUTO_COMMIT_ENABLED,
                 Features.USE_GENERATED_KEYS_FLAG);
+        setUpTypesTable("TEST_TABLE");
+         dbq.insertRow(TEST_RECORD_ALL_VALUES, INSERT_FULL_RECORD);
+    }
+
+    private String createTestTable() throws SQLException {
+        String name = "TEST_TABLE_" + System.currentTimeMillis() + "_" + (long)(Math.random() * System.currentTimeMillis());
+        setUpTypesTable(name);
+        return name;
     }
 
     @AfterAll
@@ -38,21 +47,26 @@ public class JDAXQueryTests extends JDAXFeaturesTestBase {
     @Test
     @DisplayName("When a record is INSERTed, expect a list of Longs")
     public void whenARecordIsInsertedExpectAListOfLongs() throws SQLException {
-        List<Long> inserted = dbq.insertRow(TEST_RECORD_ALL_VALUES, INSERT_FULL_RECORD);
+        String testTable = createTestTable();
+        String query=INSERT_FULL_RECORD.replace("TEST_TABLE", testTable);
+        List<Long> inserted = dbq.insertRow(TEST_RECORD_ALL_VALUES, query);
         Assertions.assertFalse(inserted.isEmpty());
         Assertions.assertTrue(inserted.get(0) > 0);
     }
 
-//    @Test
+    @Test
     @DisplayName("When a record is UPDATEd, expect the new values upon SELECT")
     public void whenARecordIsUpdatedExpectNewValuesUponSelect() throws SQLException, IOException {
-        whenARecordIsInsertedExpectAListOfLongs();
+        String testTable = createTestTable();
+        String query=INSERT_FULL_RECORD.replace("TEST_TABLE", testTable);
+        List<Long> inserted = dbq.insertRow(TEST_RECORD_ALL_VALUES, query);
+        
+        String updateQuery=UPDATE_ALL_RECORDS.replace("TEST_TABLE", testTable);
+        int updated = dbq.update(updateQuery);
 
-        int updated = dbq.update(UPDATE_ALL_RECORDS);
+        Assertions.assertTrue(updated > 0, "Update count mismatch, expected at least 1 updated records");
 
-        Assertions.assertTrue(updated > 1, "Update count mismatch, expected at least 2 updated records");
-
-        try (ResultRows selects = dbq.select(toTestTable(SELECT_ALL_COLUMNS, "TEST_TABLE"))) {
+        try (ResultRows selects = dbq.select(toTestTable(SELECT_ALL_COLUMNS, testTable))) {
             while (selects.next()) {
                 AllTypesRecord selected = selects.get(AllTypesRecord.class);
 

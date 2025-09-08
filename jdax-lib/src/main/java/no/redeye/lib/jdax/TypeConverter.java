@@ -2,7 +2,6 @@ package no.redeye.lib.jdax;
 
 import java.io.InputStream;
 import java.io.Reader;
-import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -20,7 +19,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.Date;
-import no.redeye.lib.jdax.types.EmptyStream;
 
 /**
  *
@@ -48,7 +46,7 @@ public class TypeConverter {
                 if (returnNull(v, allowNulls)) {
                     return null;
                 }
-                value = (null != v) ? v : "";
+                value = (null != v) ? v : null;
             }
             case Types.CHAR -> {
                 String v = rs.getString(columnIndex);
@@ -73,77 +71,70 @@ public class TypeConverter {
                 if (returnNull(v, allowNulls)) {
                     return null;
                 }
-                value = (null != v) ? v : BigDecimal.ZERO;
+                value = (null != v) ? v : null;
             }
             case Types.BIT, Types.BOOLEAN -> {
-                Boolean v = rs.getBoolean(columnIndex);
-                value = rs.wasNull() ? (allowNulls ? null : Boolean.FALSE) : v;
+                value = rs.getBoolean(columnIndex);
             }
             case Types.SMALLINT -> {
-                Short v = rs.getShort(columnIndex);
-                value = rs.wasNull() ? (allowNulls ? null : Short.valueOf((short) 0)) : v;
+                value = rs.getShort(columnIndex);
             }
             case Types.INTEGER -> {
-                Integer v = rs.getInt(columnIndex);
-                value = rs.wasNull() ? (allowNulls ? null : Integer.valueOf(0)) : v;
+                value = rs.getInt(columnIndex);
             }
             case Types.TINYINT -> {
-                Byte v = rs.getByte(columnIndex);
-                value = rs.wasNull() ? (allowNulls ? null : Byte.valueOf((byte) 0)) : v;
+                value = rs.getByte(columnIndex);
             }
             case Types.BIGINT -> {
-                Long v = rs.getLong(columnIndex);
-                value = rs.wasNull() ? (allowNulls ? null : Long.valueOf(0L)) : v;
+                value = rs.getLong(columnIndex);
             }
             case Types.DOUBLE, Types.FLOAT -> {
-                Double v = rs.getDouble(columnIndex);
-                value = rs.wasNull() ? (allowNulls ? null : Double.valueOf(0.0)) : v;
+                value = rs.getDouble(columnIndex);
             }
             case Types.REAL -> {
-                Float v = rs.getFloat(columnIndex);
-                value = rs.wasNull() ? (allowNulls ? null : Float.valueOf(0.0f)) : v;
+                value= rs.getFloat(columnIndex);
             }
             case Types.BINARY, Types.VARBINARY, Types.LONGVARBINARY -> {
                 byte[] v = rs.getBytes(columnIndex);
                 if (returnNull(v, allowNulls)) {
                     return null;
                 }
-                value = (null != v) ? v : new byte[0];
+                value = (null != v) ? v : null;
             }
             case Types.DATE -> {
                 java.sql.Date v = rs.getDate(columnIndex);
                 if (returnNull(v, allowNulls)) {
                     return null;
                 }
-                value = (null != v) ? v.toLocalDate() : LocalDate.EPOCH;
+                value = (null != v) ? v.toLocalDate() : null;
             }
             case Types.TIME, Types.TIME_WITH_TIMEZONE -> {
                 Time v = rs.getTime(columnIndex);
                 if (returnNull(v, allowNulls)) {
                     return null;
                 }
-                value = (null != v) ? v.toLocalTime() : LocalTime.MIDNIGHT;
+                value = (null != v) ? v.toLocalTime() : null;
             }
             case Types.TIMESTAMP, Types.TIMESTAMP_WITH_TIMEZONE -> {
                 Timestamp v = rs.getTimestamp(columnIndex);
                 if (returnNull(v, allowNulls)) {
                     return null;
                 }
-                value = (null != v) ? v.toInstant() : Instant.EPOCH;
+                value = (null != v) ? v.toInstant() : null;
             }
             case Types.BLOB -> {
                 Blob v = rs.getBlob(columnIndex);
                 if (returnNull(v, allowNulls)) {
                     return null;
                 }
-                value = (null != v) ? v.getBinaryStream() : new EmptyStream();
+                value = (null != v) ? v.getBinaryStream() : null;
             }
             case Types.CLOB -> {
                 Clob v = rs.getClob(columnIndex);
                 if (returnNull(v, allowNulls)) {
                     return null;
                 }
-                value = (null != v) ? v.getCharacterStream() : new StringReader("");
+                value = (null != v) ? v.getCharacterStream() : null;
             }
             default -> {
                 value = rs.getObject(columnIndex);
