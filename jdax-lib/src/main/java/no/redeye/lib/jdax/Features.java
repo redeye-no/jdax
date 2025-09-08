@@ -14,7 +14,7 @@ public enum Features {
      * Use Statement.RETURN_GENERATED_KEYS to retrieve ID of newly inserted rows.
      * If not set, the DAO will use a named field instead of auto-generated column.
      */
-    USE_GENERATED_KEYS_FLAG, 
+    USE_GENERATED_KEYS_FLAG,
     /**
      * When provided, query results will avoid returning null values for null values in the DB.
      * This allows calling apps to avoid checking for nulls.
@@ -23,7 +23,7 @@ public enum Features {
     /**
      * Set connection to auto-commit mode
      */
-    AUTO_COMMIT_ENABLED, 
+    AUTO_COMMIT_ENABLED,
     /**
      * Disable connection auto-commit
      */

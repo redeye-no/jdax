@@ -15,7 +15,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
-import no.redeye.lib.jdax.SQLTypeConverter;
+import no.redeye.lib.jdax.TypeConverter;
+import no.redeye.lib.jdax.TypeRegistry;
 
 /**
  * A transfer object for SQL results. ResultRows provides a mechanism to:
@@ -29,7 +30,7 @@ public abstract class ResultSetType implements AutoCloseable {
     protected final Statement statement;
     protected final ResultSet resultSet;
     protected ResultSetMetaData metaData;
-    protected Class<?>[] argumentTypes = null;
+    protected int[] resultSetTypes = null;
     private List rowTypes = new ArrayList();
     protected final boolean allowNulls;
 
@@ -59,7 +60,7 @@ public abstract class ResultSetType implements AutoCloseable {
     @Override
     public void close() throws IOException, SQLException {
         metaData = null;
-        argumentTypes = null;
+        resultSetTypes = null;
         rowTypes = null;
 
         try (resultSet) {
@@ -72,7 +73,9 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed field as an Object. Index starts at 1, not 0.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public Object getObject(int index) throws SQLException {
@@ -83,44 +86,52 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of named field as an Object.
      *
      * @param fieldName
+     *
      * @return
+     *
      * @throws SQLException
      */
     public Object getObject(String fieldName) throws SQLException {
         return object(fieldName, Integer.MAX_VALUE);
     }
+
     public Object getObject(String fieldName, int returnType) throws SQLException {
         return object(fieldName, returnType);
     }
+
     private Object object(String fieldName, int returnType) throws SQLException {
         return getObject(fieldNames.indexOf(fieldName), returnType);
     }
-	
-	
-	/**
-	 * Automatic type scaling for numeric values.
-	 * @param fieldName
-	 * @param returnType
-	 * @return
-	 * @throws SQLException 
-	 */
+
+    /**
+     * Automatic type scaling for numeric values.
+     *
+     * @param fieldName
+     * @param returnType
+     *
+     * @return
+     *
+     * @throws SQLException
+     */
     private Object getObject(int index, int returnType) throws SQLException {
         if ((index < 1) || (index > metaData.getColumnCount())) {
             throw new SQLException("Row index " + index + " is out of bounds, expected range is: 1 <= index <= " + metaData.getColumnCount());
         }
         int columnType = metaData.getColumnType(index);
-        return (SQLTypeConverter.getValueForType(resultSet, index, columnType, allowNulls, returnType));
+        return (TypeConverter.getValueForType(resultSet, index, columnType, allowNulls, TypeRegistry.SQL_TO_JAVA.get(returnType)));
     }
-    
+
     /**
      * Retrieve value of indexed field as a BigDecimal.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public BigDecimal getBigDecimal(int index) throws SQLException {
-        return (BigDecimal) getObject(index,Types.DECIMAL);
+        return (BigDecimal) getObject(index, Types.DECIMAL);
     }
 
     public BigDecimal getBigDecimal(String fieldName) throws SQLException {
@@ -131,7 +142,9 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed field as a BigInteger.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public BigInteger getBigInteger(int index) throws SQLException {
@@ -147,11 +160,13 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed field as a boolean.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public boolean getBoolean(int index) throws SQLException {
-        return (boolean) getObject(index);
+        return (boolean) getObject(index, Types.BOOLEAN);
     }
 
     public boolean getBoolean(String fieldName) throws SQLException {
@@ -162,11 +177,13 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed field as a byte.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public byte getByte(int index) throws SQLException {
-        return (byte) getObject(index);
+        return (byte) getObject(index, Types.TINYINT);
     }
 
     public byte getByte(String fieldName) throws SQLException {
@@ -177,7 +194,9 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed field as a double.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public double getDouble(int index) throws SQLException {
@@ -192,7 +211,9 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed field as a float.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public float getFloat(int index) throws SQLException {
@@ -207,7 +228,9 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed field as a .
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public int getInt(int index) throws SQLException {
@@ -222,7 +245,9 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed field as a long value.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public long getLong(int index) throws SQLException {
@@ -237,7 +262,9 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed field as a short value.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public short getShort(int index) throws SQLException {
@@ -252,11 +279,13 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed field as a java.time.LocalDate.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public LocalDate getDate(int index) throws SQLException {
-        return (LocalDate) getObject(index,Types.DATE);
+        return (LocalDate) getObject(index, Types.DATE);
     }
 
     public LocalDate getDate(String fieldName) throws SQLException {
@@ -267,11 +296,13 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed field as a java.time.LocalTime.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public LocalTime getTime(int index) throws SQLException {
-        return (LocalTime) getObject(index,Types.TIME);
+        return (LocalTime) getObject(index, Types.TIME);
     }
 
     public LocalTime getTime(String fieldName) throws SQLException {
@@ -282,11 +313,13 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed field as a java.time.Instant.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public Instant getTimestamp(int index) throws SQLException {
-        return (Instant) getObject(index,Types.TIMESTAMP);
+        return (Instant) getObject(index, Types.TIMESTAMP);
     }
 
     public Instant getTimestamp(String fieldName) throws SQLException {
@@ -297,11 +330,13 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed varchar
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public String getString(int index) throws SQLException {
-        return (String) getObject(index,Types.VARCHAR);
+        return (String) getObject(index, Types.VARCHAR);
     }
 
     public String getString(String fieldName) throws SQLException {
@@ -312,11 +347,13 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve value of indexed field as a byte array.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public byte[] getBytes(int index) throws SQLException {
-        return (byte[]) getObject(index);
+        return (byte[]) getObject(index, Types.VARBINARY);
     }
 
     public byte[] getBytes(String fieldName) throws SQLException {
@@ -327,11 +364,13 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve the InputStream associated with the current row field.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public InputStream getBinaryStream(int index) throws SQLException {
-        return (InputStream) getObject(index);
+        return (InputStream) getObject(index, Types.BLOB);
     }
 
     public InputStream getBinaryStream(String fieldName) throws SQLException {
@@ -342,11 +381,13 @@ public abstract class ResultSetType implements AutoCloseable {
      * Retrieve the Reader associated with the current row field.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      */
     public Reader getCharacterStream(int index) throws SQLException {
-        return (Reader) getObject(index);
+        return (Reader) getObject(index, Types.CLOB);
     }
 
     public Reader getCharacterStream(String fieldName) throws SQLException {

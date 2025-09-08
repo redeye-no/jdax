@@ -1,6 +1,5 @@
 package no.redeye.lib.jdax;
 
-//import java.lang.reflect.Field;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -36,7 +35,7 @@ public class DAOType {
     /**
      *
      * @param datasourceName The datasourceName associated datasource declared
-     * in the Connector
+     *                       in the Connector
      */
     public DAOType(String datasourceName) {
         DS_NAME = datasourceName;
@@ -119,10 +118,10 @@ public class DAOType {
      * @param clazz
      * @param sql
      * @param returnFields field name(s) whose value(s) will be returned as
-     * identity fields
+     *                     identity fields
      *
      * @return identities of inserted rows if returnFieldsis provided,
-     * otherwise, and empty list indicating a successful insert of 1 record.
+     *         otherwise, and empty list indicating a successful insert of 1 record.
      *
      * @throws SQLException
      */
@@ -140,10 +139,10 @@ public class DAOType {
      * @param values
      * @param sql
      * @param returnFields field name(s) whose value(s) will be returned as
-     * identity fields
+     *                     identity fields
      *
      * @return identities of inserted rows if returnFieldsis provided,
-     * otherwise, and empty list indicating a successful insert of 1 record.
+     *         otherwise, and empty list indicating a successful insert of 1 record.
      *
      * @throws SQLException
      */
@@ -267,7 +266,7 @@ public class DAOType {
         QueryInputs qi = buildQueryInputs(values, wheres, ins, sql);
         return executeUpdate(qi).count();
     }
-    
+
     private QueryInputs buildQueryInputs(Object[] values, Object[] wheres, Object[][] ins, String sql) throws SQLException {
         if (null != values) {
             if (null != wheres) {
@@ -324,7 +323,7 @@ public class DAOType {
                 if (insArrayIndex >= ins.length) {
                     throw new SQLException("Query statement contains more IN clauses than the parameters provided (" + ins.length + ")");
                 }
-                
+
                 // Convert IN clause markers to statement params.
                 // In: (??) Out: (?, ?, ?)
                 allValues.addAll(Arrays.asList(ins[insArrayIndex]));
@@ -466,7 +465,7 @@ public class DAOType {
     private void bind(PreparedStatement ps, Object[] values) throws SQLException {
         for (int i = 1; i <= values.length; i++) {
             Object value = values[i - 1];
-            SQLTypeConverter.setValueForType(ps, value, i);
+            TypeConverter.setValueForType(ps, value, i);
         }
     }
 
