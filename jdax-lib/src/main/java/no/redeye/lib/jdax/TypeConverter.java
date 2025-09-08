@@ -177,15 +177,6 @@ public class TypeConverter {
         return paramTypes;
     }
 
-    public static Class<?>[] _rowTypes(ResultSet rs) throws SQLException {
-        Class<?>[] paramTypes = new Class<?>[rs.getMetaData().getColumnCount()];
-        for (int i = 0; i < paramTypes.length; i++) {
-            int columnType = rs.getMetaData().getColumnType(i + 1);
-            paramTypes[i] = TypeRegistry.SQL_TO_JAVA.get(columnType);
-        }
-        return paramTypes;
-    }
-
     /**
      * Set the value of a statement parameter.
      *
@@ -248,30 +239,6 @@ public class TypeConverter {
             ps.setCharacterStream(columnIndex, reader);
         } else {
             throw new SQLException("Object of type " + value.getClass().getName() + ", is not supported");
-        }
-    }
-
-    /**
-     * Return the null equivalent for a given column type.
-     *
-     * @param columnType
-     *
-     * @return
-     */
-    public static Object getNullForType(int columnType) {
-        switch (columnType) {
-            case Types.NUMERIC, Types.INTEGER, Types.SMALLINT -> {
-                return 0;
-            }
-            case Types.DECIMAL, Types.DOUBLE, Types.FLOAT -> {
-                return 0;
-            }
-            case Types.BOOLEAN -> {
-                return false;
-            }
-            default -> {
-                return null;
-            }
         }
     }
 }
