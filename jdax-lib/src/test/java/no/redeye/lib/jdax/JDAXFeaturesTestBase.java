@@ -51,7 +51,7 @@ public class JDAXFeaturesTestBase extends TestBase {
     protected final String INSERT_FULL_RECORD = """
         INSERT INTO TEST_TABLE 
         (integerField, bigintField, realField, floatField, doubleField, decimalField, numericField, dateField, timeField, timestampField, charField, varcharField, blobField, clobField) 
-        VALUES (#  , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""";
+        VALUES (#, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""";
 
     protected final String INSERT_NULLS_RECORD = """
         INSERT INTO TEST_TABLE 
@@ -61,8 +61,10 @@ public class JDAXFeaturesTestBase extends TestBase {
     protected final String UPDATE_ALL_RECORDS = """
         UPDATE TEST_TABLE 
         SET integerField = 127, bigintField = 127, realField = 127, floatField = 127, doubleField = 127""";
-    
-    protected final String SELECT_ALL_ROWS = "SELECT * FROM TEST_TABLE";
+
+    protected final String SELECT_ALL_COLUMNS = "SELECT * FROM TEST_TABLE";
+    protected final String SELECT_NUMERIC_COLUMNS = "SELECT integerField, bigintField, realField, floatField, doubleField, decimalField, numericField FROM TEST_TABLE";
+    protected final String SELECT_TEMPORAL_COLUMNS = "SELECT dateField, timeField, timestampField FROM TEST_TABLE";
 
     protected List<Long> setUpTest(VO vo, String insert, String tableName, Features... featues) throws SQLException {
         setUpDS(featues);

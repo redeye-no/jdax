@@ -7,8 +7,10 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import no.redeye.lib.jdax.types.ResultRows;
@@ -33,10 +35,12 @@ public class JDAXTypesTests extends JDAXFeaturesTestBase {
         VALUES (?, ?)""";
 
     private static final String SELECT_TYPE_TEMPLATE = "SELECT * FROM %s WHERE id = ?";
-    
+
+    private static final String DROP_TYPE_TEMPLATE = "DROP TABLE %s";
+
     @BeforeAll
     public void beforeAll() throws SQLException {
-        setUpDS();
+        setUpDS(Features.NULL_RESULTS_DISABLED);
     }
 
     @AfterAll
@@ -44,119 +48,242 @@ public class JDAXTypesTests extends JDAXFeaturesTestBase {
         tearDownDS();
     }
 
-    private void createTypeTable(Class<?> javaType) throws SQLException {
-        dbq.createSingleTypeTable(javaType);
+    private String createTypeTable(Class<?> javaType) throws SQLException {
+        return dbq.createSingleTypeTable(javaType);
     }
 
-    private static final Map<Class<?>, Integer> JAVA_TO_JDBC_TYPE = Map.ofEntries(
-    Map.entry(BigDecimal.class, Types.DECIMAL),
-    Map.entry(BigInteger.class, Types.NUMERIC),
-    Map.entry(Boolean.class, Types.BOOLEAN),   // safer than BIT
-    Map.entry(Double.class, Types.DOUBLE),
-    Map.entry(Float.class, Types.REAL),
-    Map.entry(Short.class, Types.SMALLINT),
-    Map.entry(Integer.class, Types.INTEGER),
-    Map.entry(Long.class, Types.BIGINT),
-    Map.entry(String.class, Types.VARCHAR),
+    private static final Map<Class<?>, Integer> JAVA_TO_JDBC_TYPE = new HashMap<>();
 
-    // Java Time API
-    Map.entry(Instant.class, Types.TIMESTAMP),
-    Map.entry(LocalDate.class, Types.DATE),
-    Map.entry(LocalTime.class, Types.TIME),
-    Map.entry(LocalDateTime.class, Types.TIMESTAMP),
+    static {
+        // Invert the primitive-wrapper map
+        for (var e : TypeRegistry.SQL_TO_JAVA.entrySet()) {
+            JAVA_TO_JDBC_TYPE.put(e.getValue(), e.getKey());
+        }
+        JAVA_TO_JDBC_TYPE.put(BigInteger.class, Types.NUMERIC);
+    }
 
-    // JDBC SQL types
-    Map.entry(java.sql.Date.class, Types.DATE),
-    Map.entry(java.sql.Time.class, Types.TIME),
-    Map.entry(java.sql.Timestamp.class, Types.TIMESTAMP)
-);
-    
-    private <T> T getTypeRow(int id, String tableName,Class<T> type) throws SQLException, IOException {
+    private <T> T getTypeRow(int id, String tableName, Class<T> type) throws SQLException, IOException {
         String dml = String.format(SELECT_TYPE_TEMPLATE, tableName);
 
         try (ResultRows selects = dbq.select(new Object[]{id}, dml)) {
 
             if (selects.next()) {
-
-                System.out.println("JAVA_TO_JDBC_TYPE -> "+JAVA_TO_JDBC_TYPE);
-                System.out.println("selects.type " + type);
-                System.out.println("selects.getString " + selects.getString("field"));
-                System.out.println("selects.getObj.typ " + selects.getObject("field", JAVA_TO_JDBC_TYPE.get(type)));
-
+                logger.info("Java {} to JDBC type {}", type, JAVA_TO_JDBC_TYPE.get(type));
                 return (T) selects.getObject("field", JAVA_TO_JDBC_TYPE.get(type));
             }
+        } finally {
+            dml = String.format(DROP_TYPE_TEMPLATE, tableName);
+            dbq.update(dml);
         }
         return null;
     }
 
-    private <T> T insertAndRetrieveTypeRecord(Class<T> type,Object value) throws SQLException, IOException {
-        int id = ai.getAndIncrement();
-        createTypeTable(type);
-
-        String tableName = "T_" + type.getSimpleName();
+    private <T> List<Long> createTypeRecord(int id, String tableName, Class<T> type, Object value) throws SQLException, IOException {
         String dml = String.format(INSERT_TYPE_TEMPLATE, tableName);
-
-        dbq.insertRow(new Object[]{id, value}, dml);
-        return (T)getTypeRow(id, tableName,type);
+        return dbq.insertRow(new Object[]{id, value}, dml);
     }
 
-    private <T> void testInsertAndRetrieveTypeRecord(Class<T> type, Object in) throws SQLException, IOException {
-        T retrievedValue = insertAndRetrieveTypeRecord(type, in);
-        Assertions.assertEquals(in, retrievedValue);
+    private <T> T insertAndRetrieveTypeRecord(Class fieldType, Object value, Class<T> resultType) throws SQLException, IOException {
+        int id = ai.getAndIncrement();
+        String tableName = createTypeTable(fieldType);
+        List<Long> created = createTypeRecord(id, tableName, fieldType, value);
+
+        return (T) getTypeRow(id, tableName, resultType);
+    }
+
+    private <T> void testInsertAndRetrieveTypeRecord(Class fieldType, Object value, Class<T> resultType, Object expected) throws SQLException, IOException {
+        logger.info("Test store and retrieve type conversions");
+
+        T retrievedValue = insertAndRetrieveTypeRecord(fieldType, value, resultType);
+
+        logger.info("- Field type = {}", fieldType);
+        logger.info("- Value type = {}", value.getClass());
+        logger.info("- Result type ={} ", resultType);
+
+        // --
+        if (retrievedValue instanceof byte[] actualValue) {
+            byte[] expectedBytes;
+
+            if (expected instanceof Byte[] boxed) {
+                // Convert boxed Byte[] → primitive byte[]
+                expectedBytes = new byte[boxed.length];
+                for (int i = 0; i < boxed.length; i++) {
+                    expectedBytes[i] = null != boxed[i] ? boxed[i] : 0;
+                }
+            } else if (expected instanceof byte[] prim) {
+                expectedBytes = prim;
+            } else {
+                throw new AssertionError("Expected value is not a byte array: " + expected);
+            }
+
+            Assertions.assertArrayEquals(expectedBytes, actualValue, "Byte arrays do not match");
+        } else if (retrievedValue instanceof Character[] actualChars) {
+            Character[] expectedChars;
+
+            if (expected instanceof char[] prim) {
+                // Convert primitive char[] -> Character[]
+                expectedChars = new Character[prim.length];
+                for (int i = 0; i < prim.length; i++) {
+                    expectedChars[i] = prim[i];
+                }
+            } else if (expected instanceof Character[] boxed) {
+                expectedChars = boxed;
+            } else if (expected instanceof String s) {
+                // Convert String -> Character[]
+                expectedChars = s.chars()
+                        .mapToObj(c -> (char) c)
+                        .toArray(Character[]::new);
+            } else {
+                throw new AssertionError("Expected value is not a Character array: " + expected);
+            }
+
+            Assertions.assertArrayEquals(expectedChars, actualChars, "Character arrays do not match");
+        } else {
+            Assertions.assertEquals(expected, retrievedValue);
+        }
+    }
+
+    private <T> void testInsertAndRetrieveTypeRecord(Class<T> fieldType, Object value) throws SQLException, IOException {
+        testInsertAndRetrieveTypeRecord(fieldType, value, fieldType, value);
     }
 
     @Test
     public void bigDecimalTest() throws SQLException, IOException {
-        testInsertAndRetrieveTypeRecord(BigDecimal.class, new BigDecimal("123"));
+        Object candidate = new BigDecimal("123.4");
+        testInsertAndRetrieveTypeRecord(BigDecimal.class, candidate, BigDecimal.class, candidate);
+        testInsertAndRetrieveTypeRecord(BigDecimal.class, candidate, BigInteger.class, candidate);
+        testInsertAndRetrieveTypeRecord(BigDecimal.class, candidate, Integer.class, 123);
+        testInsertAndRetrieveTypeRecord(BigDecimal.class, candidate, Long.class, 123l);
+        testInsertAndRetrieveTypeRecord(BigDecimal.class, candidate, Double.class, 123.4d);
+        testInsertAndRetrieveTypeRecord(BigDecimal.class, candidate, Float.class, 123.4f);
+        testInsertAndRetrieveTypeRecord(BigDecimal.class, candidate, Short.class, (short) 123);
+        testInsertAndRetrieveTypeRecord(BigDecimal.class, candidate, String.class, "123.4");
     }
 
     @Test
     public void bigIntegerTest() throws SQLException, IOException {
-        testInsertAndRetrieveTypeRecord(BigInteger.class, new BigDecimal("123"));
+        Object candidate = new BigInteger("123");
+        Object expected = new BigDecimal("123"); // Because there is no BigInt in the DB
+        testInsertAndRetrieveTypeRecord(BigInteger.class, candidate, BigDecimal.class, expected);
+        testInsertAndRetrieveTypeRecord(BigInteger.class, candidate, BigInteger.class, expected);
+        testInsertAndRetrieveTypeRecord(BigInteger.class, candidate, Integer.class, 123);
+        testInsertAndRetrieveTypeRecord(BigInteger.class, candidate, Long.class, 123l);
+        testInsertAndRetrieveTypeRecord(BigInteger.class, candidate, Double.class, 123.0d);
+        testInsertAndRetrieveTypeRecord(BigInteger.class, candidate, Float.class, 123.0f);
+        testInsertAndRetrieveTypeRecord(BigInteger.class, candidate, Short.class, (short) 123);
+        testInsertAndRetrieveTypeRecord(BigInteger.class, candidate, String.class, "123");
     }
 
     @Test
-    public void booleanTest() throws SQLException, IOException {
-        testInsertAndRetrieveTypeRecord(Boolean.class, false);
-    }
-
-    @Test
-    public void byteTest() throws SQLException, IOException {
-//        testInsertAndRetrieveTypeRecord(byte[].class, new byte[]{3});
-    }
-
-    @Test
-    public void dateTest() throws SQLException, IOException {
-        testInsertAndRetrieveTypeRecord(LocalDate.class, LocalDate.EPOCH);
-    }
-
-    @Test
-    public void doubleTest() throws SQLException, IOException {
-        testInsertAndRetrieveTypeRecord(Double.class, 1.23);
-    }
-
-    @Test
-    public void floatTest() throws SQLException, IOException {
-        testInsertAndRetrieveTypeRecord(Float.class, 1.23f);
+    public void longTest() throws SQLException, IOException {
+        Object candidate = Long.valueOf(123);
+        testInsertAndRetrieveTypeRecord(Long.class, candidate, Integer.class, 123);
+        testInsertAndRetrieveTypeRecord(Long.class, candidate, Long.class, 123l);
+        testInsertAndRetrieveTypeRecord(Long.class, candidate, Double.class, 123.0d);
+        testInsertAndRetrieveTypeRecord(Long.class, candidate, Float.class, 123.0f);
+        testInsertAndRetrieveTypeRecord(Long.class, candidate, Short.class, (short) 123);
+        testInsertAndRetrieveTypeRecord(Long.class, candidate, String.class, "123");
     }
 
     @Test
     public void integerTest() throws SQLException, IOException {
-        testInsertAndRetrieveTypeRecord(Integer.class, 123);
+        Object candidate = 123;
+        testInsertAndRetrieveTypeRecord(Integer.class, candidate);
+        testInsertAndRetrieveTypeRecord(Integer.class, candidate, Integer.class, candidate);
+        testInsertAndRetrieveTypeRecord(Integer.class, candidate, Long.class, 123l);
+        testInsertAndRetrieveTypeRecord(Integer.class, candidate, Double.class, 123.0d);
+        testInsertAndRetrieveTypeRecord(Integer.class, candidate, Float.class, 123.0f);
+        testInsertAndRetrieveTypeRecord(Integer.class, candidate, Short.class, (short) 123);
+        testInsertAndRetrieveTypeRecord(Integer.class, candidate, String.class, "123");
+    }
+
+    @Test
+    public void doubleTest() throws SQLException, IOException {
+        Object candidate = 123.4d;
+        testInsertAndRetrieveTypeRecord(Double.class, candidate, Integer.class, 123);
+        testInsertAndRetrieveTypeRecord(Double.class, candidate, Long.class, 123l);
+        testInsertAndRetrieveTypeRecord(Double.class, candidate, Double.class, candidate);
+        testInsertAndRetrieveTypeRecord(Double.class, candidate, Float.class, 123.4f);
+        testInsertAndRetrieveTypeRecord(Double.class, candidate, Short.class, (short) 123);
+        testInsertAndRetrieveTypeRecord(Double.class, candidate, String.class, "123.4");
+
+    }
+
+    @Test
+    public void floatTest() throws SQLException, IOException {
+        // Float <--> Double
+        Object candidate = 123.4f;
+        Object expected = 123.4000015258789d; // floating-point precision trap
+        testInsertAndRetrieveTypeRecord(Float.class, candidate, Integer.class, 123);
+        testInsertAndRetrieveTypeRecord(Float.class, candidate, Long.class, 123l);
+        testInsertAndRetrieveTypeRecord(Float.class, candidate, Double.class, expected);
+        testInsertAndRetrieveTypeRecord(Float.class, candidate, Float.class, candidate);
+        testInsertAndRetrieveTypeRecord(Float.class, candidate, Short.class, (short) 123);
+        testInsertAndRetrieveTypeRecord(Float.class, candidate, String.class, "123.4");
     }
 
     @Test
     public void shortTest() throws SQLException, IOException {
-        testInsertAndRetrieveTypeRecord(Short.class, (short) 123);
+        Object candidate = (short) 123;
+        testInsertAndRetrieveTypeRecord(Short.class, candidate, Integer.class, 123);
+        testInsertAndRetrieveTypeRecord(Short.class, candidate, Long.class, 123l);
+        testInsertAndRetrieveTypeRecord(Short.class, candidate, Double.class, 123.0d);
+        testInsertAndRetrieveTypeRecord(Short.class, candidate, Float.class, 123.0f);
+        testInsertAndRetrieveTypeRecord(Short.class, candidate, Short.class, candidate);
+        testInsertAndRetrieveTypeRecord(Short.class, candidate, String.class, "123");
+    }
+
+    @Test
+    public void booleanTest() throws SQLException, IOException {
+        Object candidate = Boolean.TRUE;
+        testInsertAndRetrieveTypeRecord(Boolean.class, candidate, Boolean.class, candidate);
+        testInsertAndRetrieveTypeRecord(Boolean.class, candidate, String.class, "true");
+    }
+
+    @Test
+    public void dateTest() throws SQLException, IOException {
+        Object candidate = LocalDate.now();
+        testInsertAndRetrieveTypeRecord(LocalDate.class, candidate, LocalDate.class, candidate);
     }
 
     @Test
     public void timeTest() throws SQLException, IOException {
-        testInsertAndRetrieveTypeRecord(LocalTime.class, LocalTime.MIDNIGHT);
+        Object candidate = LocalTime.now();
+        Object expected = ((LocalTime) candidate).truncatedTo(ChronoUnit.SECONDS);
+        testInsertAndRetrieveTypeRecord(LocalTime.class, candidate, LocalTime.class, expected);
     }
 
     @Test
     public void timestampTest() throws SQLException, IOException {
-        testInsertAndRetrieveTypeRecord(Instant.class, Instant.EPOCH.plusMillis(187));
+        Object candidate = Instant.now();
+        testInsertAndRetrieveTypeRecord(Instant.class, candidate, Instant.class, candidate);
+    }
+
+    @Test
+    public void stringTest() throws SQLException, IOException {
+        Object candidate = "foo";
+        testInsertAndRetrieveTypeRecord(String.class, candidate, String.class, candidate);
+    }
+
+    @Test
+    public void charTest() throws SQLException, IOException {
+        Object candidate = "f";
+        Object expectedString = "f       "; // Test field is of type CHAR(8)
+        Object expectedChars = ((String) expectedString).chars() // IntStream of code points
+                .mapToObj(c -> (char) c)
+                .toArray(Character[]::new);
+        testInsertAndRetrieveTypeRecord(Character.class, candidate, String.class, expectedString);
+        testInsertAndRetrieveTypeRecord(Character[].class, candidate, String.class, expectedString);
+        testInsertAndRetrieveTypeRecord(Character[].class, candidate, Character[].class, expectedChars);
+    }
+
+    @Test
+    public void byteTest() throws SQLException, IOException {
+        testInsertAndRetrieveTypeRecord(Byte.class, (byte) 123);
+    }
+
+    @Test
+    public void bytesTest() throws SQLException, IOException {
+        testInsertAndRetrieveTypeRecord(Byte[].class, new Byte[]{3, 2, 1, 0});
     }
 }
