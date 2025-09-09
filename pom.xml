@@ -3,7 +3,7 @@
     <groupId>no.redeye</groupId>
     <artifactId>jdax</artifactId>
     <name>jdax</name>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
 
     <licenses>
@@ -36,7 +36,7 @@
 	<connection>scm:git:git://github.com/redeye-no/jdax.git</connection>
 	<developerConnection>scm:git:ssh://git@github.com/redeye-no/jdax.git</developerConnection>
 	<url>https://github.com/redeye-no/jdax</url>
-	<tag>HEAD</tag>
+	<tag>jdax-1.0.0</tag>
     </scm>
 
     <build>
