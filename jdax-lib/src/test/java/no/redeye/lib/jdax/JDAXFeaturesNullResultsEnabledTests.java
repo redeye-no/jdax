@@ -8,6 +8,7 @@ import no.redeye.lib.jdax.types.ResultRows;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,8 +18,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class JDAXFeaturesNullResultsEnabledTests extends JDAXFeaturesTestBase {
 
+    private final String TEST_TABLE = "givenNullResultsEnabled_thenNullFieldsReturned";
+
     @BeforeEach
     public void setUp() throws Exception {
+        List<Long> identities = setUpTest(
+                TEST_RECORD_NULL_VALUES,
+                toTestTable(INSERT_NULLS_RECORD, TEST_TABLE),
+                TEST_TABLE,
+                Features.USE_GENERATED_KEYS_FLAG);
+
+        Assertions.assertEquals(1, identities.size());
     }
 
     @AfterEach
@@ -26,17 +36,9 @@ public class JDAXFeaturesNullResultsEnabledTests extends JDAXFeaturesTestBase {
     }
 
     @Test
-    public void whenNullResultsDisabledFlagIsNotSetThenReturnNullFields() throws SQLException, IOException {
-        String tableName = "whenNullResultsDisabledFlagIsNotSetThenReturnNullFields";
-        List<Long> identities = setUpTest(
-                TEST_RECORD_NULL_VALUES,
-                toTestTable(INSERT_NULLS_RECORD, tableName),
-                tableName,
-                Features.USE_GENERATED_KEYS_FLAG);
-
-        Assertions.assertEquals(1, identities.size());
-
-        try (ResultRows selects = dbq.select(toTestTable(SELECT_ALL_ROWS, tableName))) {
+    @DisplayName("Returns null fields when null results are disabled")
+    public void givenNullResultsEnabled_thenNullFieldsReturned() throws SQLException, IOException {
+        try (ResultRows selects = dbq.select(toTestTable(SELECT_ALL_COLUMNS, TEST_TABLE))) {
             while (selects.next()) {
                 AllTypesRecord selected = selects.get(AllTypesRecord.class);
 

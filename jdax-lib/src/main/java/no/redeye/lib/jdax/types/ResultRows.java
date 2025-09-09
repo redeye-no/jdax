@@ -6,13 +6,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringWriter;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import no.redeye.lib.jdax.SQLTypeConverter;
+import no.redeye.lib.jdax.TypeConverter;
+import no.redeye.lib.jdax.TypeRegistry;
 
 /**
  * A transfer object for SQL results. ResultRows provides a mechanism to:
@@ -40,17 +42,59 @@ public class ResultRows extends ResultSetType implements VO {
      */
     public <T> T get(Class<T> returnType) throws SQLException {
         try {
-            Object[] argumentValues = resultSetValues();
-            if (null == argumentTypes) {
-                argumentTypes = SQLTypeConverter.rowTypes(resultSet);
+            if (null == resultSetTypes) {
+                resultSetTypes = TypeConverter.rowTypes(resultSet);
             }
-            if (argumentValues.length != argumentTypes.length) {
-                throw new SQLException("DAOType expects " + argumentTypes.length + " parameters but ResultSet has " + argumentValues.length);
+
+            Constructor<T> constructor = findConstructors(returnType, resultSetTypes);
+            Class<?>[] constructorParamTypes = constructor.getParameterTypes();
+            Object[] resultSetValues = resultSetValues(constructorParamTypes);
+
+            if (resultSetValues.length != resultSetTypes.length) {
+                throw new SQLException("DAOType expects " + resultSetTypes.length + " parameters but ResultSet has " + resultSetValues.length);
             }
-            return returnType.getDeclaredConstructor(argumentTypes).newInstance(argumentValues);
+
+            return constructor.newInstance(resultSetValues);
         } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
             throw new SQLException(e);
         }
+    }
+
+    /**
+     * Find constructors whose parameter types are compatible
+     * with the requested types (using TypeRegistry rules).
+     *
+     * @param <T>
+     * @param clazz
+     * @param resultSetTypes
+     *
+     * @return
+     *
+     * @throws java.lang.NoSuchMethodException
+     */
+    public static <T> Constructor<T> findConstructors(Class<T> clazz, int[] resultSetTypes) throws NoSuchMethodException {
+        for (Constructor<?> constructor : clazz.getDeclaredConstructors()) {
+            Class<?>[] actualParamTypes = constructor.getParameterTypes();
+            if (convertible(resultSetTypes, actualParamTypes)) {
+                @SuppressWarnings("unchecked")
+                Constructor<T> c = (Constructor<T>) constructor;
+                return c;
+            }
+        }
+        throw new NoSuchMethodException("Unsupported conversion type, " + clazz);
+    }
+
+    private static boolean convertible(int[] resultSetTypes, Class<?>[] actual) {
+        if (actual.length != resultSetTypes.length) {
+            return false;
+        }
+
+        for (int i = 0; i < actual.length; i++) {
+            if (!TypeRegistry.isCompatible(resultSetTypes[i], actual[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -63,14 +107,29 @@ public class ResultRows extends ResultSetType implements VO {
      *
      * @throws SQLException
      */
-    private Object[] resultSetValues() throws SQLException {
-        Object[] paramTypes = new Object[metaData.getColumnCount()];
-        for (int i = 1; i <= metaData.getColumnCount(); i++) {
-            int columnType = metaData.getColumnType(i);
-
-            paramTypes[i - 1] = SQLTypeConverter.getValueForType(resultSet, i, columnType, allowNulls);
+    private Object[] resultSetValues(Class<?>[] requestedParameterTypes) throws SQLException {
+        Object[] values = new Object[requestedParameterTypes.length];
+        for (int i = 0; i < requestedParameterTypes.length; i++) {
+            int columnIndex = (i + 1);
+            int columnType = metaData.getColumnType(columnIndex);
+            Class<?> targetType = requestedParameterTypes[i];
+            values[i] = TypeConverter.getValueForType(resultSet, columnIndex, columnType, allowNulls, targetType);
         }
-        return paramTypes;
+
+        dumpit(requestedParameterTypes, values);
+        return values;
+    }
+
+    private void dumpit(Object[] expected, Object[] values) {
+        System.out.println("\n######################################");
+
+        for (int i = 0; i < expected.length; i++) {
+            System.out.printf("Param[%d]: expected=%s, \t\tgot=%s/%s%n",
+                    i,
+                    (expected[i] == null ? "null" : expected[i]),
+                    (values[i] == null ? "null" : values[i].getClass().getName()),
+                    (values[i] == null ? "null" : values[i]));
+        }
     }
 
     /**
@@ -78,7 +137,9 @@ public class ResultRows extends ResultSetType implements VO {
      *
      * @param index
      * @param zone
+     *
      * @return
+     *
      * @throws SQLException
      */
     public LocalDateTime dateTime(int index, ZoneId zone) throws SQLException {
@@ -93,7 +154,9 @@ public class ResultRows extends ResultSetType implements VO {
      * Retrieve the value of a blob field as a byte array.
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      * @throws IOException
      */
@@ -116,7 +179,9 @@ public class ResultRows extends ResultSetType implements VO {
      * Retrieve value of a clob field as a String
      *
      * @param index
+     *
      * @return
+     *
      * @throws SQLException
      * @throws IOException
      */
@@ -141,9 +206,4 @@ public class ResultRows extends ResultSetType implements VO {
     public String clob(String fieldName) throws SQLException, IOException {
         return clob(fieldNames.indexOf(fieldName));
     }
-
-    private int columnIndex(String fieldName) {
-        return fieldNames.indexOf(fieldName);
-    }
-
 }

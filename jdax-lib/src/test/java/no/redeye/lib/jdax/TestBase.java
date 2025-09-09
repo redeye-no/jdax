@@ -3,10 +3,11 @@ package no.redeye.lib.jdax;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.io.StringReader;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -15,10 +16,14 @@ import java.time.LocalTime;
 import java.util.function.Function;
 import javax.sql.DataSource;
 import no.redeye.lib.jdax.sql.DBQueries;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  */
 public class TestBase {
+
+    protected static Logger logger = LogManager.getLogger("apiLogger");
 
     protected final String DATASOURCE_NAME = "jdax-ds";
     private final DBQueries dbq = new DBQueries(DATASOURCE_NAME);
@@ -36,67 +41,40 @@ public class TestBase {
     protected final LocalDate DATE_VALUE = LocalDate.now().plusDays(7);
     protected final LocalTime TIME_VALUE = LocalTime.MIN;
     protected final Instant TIMESTAMP_VALUE = Instant.now();
+//    protected final char CHAR_VALUE = 'c';
     protected final String CHAR_VALUE = "char";
     protected final String VARCHAR_VALUE = "string";
-    protected final InputStream BLOB_VALUE = null;
-    protected final Reader CLOB_VALUE = null;
+    protected final InputStream BLOB_VALUE = new ByteArrayInputStream(new byte[0]);
+    protected final Reader CLOB_VALUE = new StringReader("");
 
     static {
         System.setProperty("derby.stream.error.file", "target/derby.log");
     }
 
     protected void setUpDS(Features... features) throws SQLException {
+        logger.info("Set up datasource features, {}", features);
         initDS(features);
     }
 
     protected void setUpTestTables() throws SQLException {
+        logger.info("Set up test tables");
         dbq.createTestTables();
     }
 
     protected void setUpTypesTable(String tableName) throws SQLException {
+        logger.info("Set up test table {}", tableName);
         dbq.createMultiTypesTable(tableName);
     }
 
     protected void tearDownDS() {
+        logger.info("Tear down datasource {}", DATASOURCE_NAME);
         Connector.close(DATASOURCE_NAME);
         Connector.remove(DATASOURCE_NAME);
     }
 
-    protected void createRecordWithNonNullFields() {
+    protected void _createRecordWithNonNullFields() {
         Connector.close(DATASOURCE_NAME);
         Connector.remove(DATASOURCE_NAME);
-    }
-
-    private String blob(InputStream is) throws SQLException {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{");
-        try (is) {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            byte[] buffer = new byte[4096]; // You can adjust the buffer size as needed
-            int bytesRead;
-            while ((bytesRead = is.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, bytesRead);
-            }
-            // Convert the byte array to a string using UTF-8 encoding
-            sb.append(new String(outputStream.toByteArray(), "UTF-8"));
-        } catch (IOException ioe) {
-            throw new SQLException(ioe);
-        }
-
-        sb.append("}");
-        return sb.toString();
-    }
-
-    private String blob(byte[] bs) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{");
-        if (null != bs) {
-            for (byte b : bs) {
-                sb.append(" ").append(b);
-            }
-        }
-        sb.append("}");
-        return sb.toString();
     }
 
     public static String clob(Reader reader) throws SQLException {
@@ -136,7 +114,6 @@ public class TestBase {
 
     private HikariConfig config() {
         HikariConfig config = new HikariConfig();
-//        config.setDriverClassName("oracle.jdbc.OracleDriver");
         config.setDriverClassName("org.apache.derby.jdbc.EmbeddedDriver");
 
         config.setAutoCommit(false);

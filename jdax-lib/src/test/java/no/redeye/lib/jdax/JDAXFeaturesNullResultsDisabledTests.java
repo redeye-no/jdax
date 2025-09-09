@@ -6,6 +6,8 @@ import java.util.List;
 import no.redeye.lib.jdax.types.AllTypesRecord;
 import no.redeye.lib.jdax.types.ResultRows;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,18 +17,23 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class JDAXFeaturesNullResultsDisabledTests extends JDAXFeaturesTestBase {
 
-    @Test
-    public void whenNullResultsDisabledFlagIsSetThenReturnNoNullFields() throws SQLException, IOException {
-        String tableName = "whenNullResultsDisabledFlagIsSetThenReturnNoNullFields";
+    private final String TEST_TABLE = "givenNullResultsDisabled_thenNullFieldsReturned";
+
+    @BeforeEach
+    public void setUp() throws Exception {
         List<Long> identities = setUpTest(
                 TEST_RECORD_NULL_VALUES,
-                toTestTable(INSERT_NULLS_RECORD, tableName),
-                tableName,
+                toTestTable(INSERT_NULLS_RECORD, TEST_TABLE),
+                TEST_TABLE,
                 Features.USE_GENERATED_KEYS_FLAG, Features.NULL_RESULTS_DISABLED);
 
         Assertions.assertEquals(1, identities.size());
+    }
 
-        try (ResultRows selects = dbq.select(toTestTable(SELECT_ALL_ROWS, tableName))) {
+    @Test
+    @DisplayName("Returns null fields when null results are disabled")
+    public void givenNullResultsDisabled_thenNullFieldsReturned() throws SQLException, IOException {
+        try (ResultRows selects = dbq.select(toTestTable(SELECT_ALL_COLUMNS, TEST_TABLE))) {
             while (selects.next()) {
                 AllTypesRecord selected = selects.get(AllTypesRecord.class);
 
