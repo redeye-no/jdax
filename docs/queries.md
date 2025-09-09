@@ -100,7 +100,7 @@ Tagged parameter replacement extends standard replacement by allowing **direct S
 
 ```java
 Number quadrillion = new Number(8, 15, "quadrillion");
-long inserted = dao.insertOne(quadrillion, 
+long inserted = dao.insertOne(quadrillion,
     "INSERT INTO numbers (id, scale, name) VALUES (#SEQUENCE_ID.nextval, ?, ?)");
 ```
 
@@ -162,10 +162,10 @@ Object[][] ins = new Object[][]{
     {"sextillion", "septillion", "octillion"}
 };
 ResultRows selected = dao.select(values, ins, "
-    SELECT * FROM numbers 
-    WHERE 
+    SELECT * FROM numbers
+    WHERE
         (id = ? OR scale < ?)
-    OR 
+    OR
         (id IN (??) AND name NOT ?)
     OR
         (scale > ? AND name IN (??))");
@@ -176,10 +176,10 @@ ResultRows selected = dao.select(values, ins, "
 jdax **automatically expands** the `IN` placeholders (`??`):
 
 ```sql
-SELECT * FROM numbers 
-WHERE 
+SELECT * FROM numbers
+WHERE
     (id = ? OR scale < ?)
-OR 
+OR
     (id IN (?, ?, ?, ?, ?, ?, ?) AND name NOT ?)
 OR
     (scale > ? AND name IN (?, ?, ?))
@@ -196,10 +196,10 @@ OR
 ### Final Expanded Query
 
 ```sql
-SELECT * FROM numbers 
-WHERE 
+SELECT * FROM numbers
+WHERE
     (id = 101 OR scale < 18)
-OR 
+OR
     (id IN (1, 3, 5, 7, 9, 11, 13) AND name NOT 'quintillion')
 OR
     (scale > 9 AND name IN ('sextillion', 'septillion', 'octillion'))
@@ -220,3 +220,4 @@ OR
 
 **jdax simplifies SQL handling**, making queries **adaptive, scalable, and clean**!
 
+[Main documentation](../README.md)

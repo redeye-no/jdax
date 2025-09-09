@@ -3,9 +3,6 @@
 This library uses the following conversion table when working with the different SQL data types.
 The alt. type column shows alternate types that a field can be retrieved as.
 
-| SQL type | Java type | Default for NULL | Alt. type* |
-
-
 | SQL Type                            | Default Java Type | Other Supported Java Types                                    | Default for Null (fallback value)   |
 |-------------------------------------|-----------|-----------------------------------------------------------------------|-------------------------------------|
 | `VARCHAR`, `LONGNVARCHAR`           | `String`  |                                                                       | `""` (empty string)                 |
