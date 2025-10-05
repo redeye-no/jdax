@@ -147,7 +147,7 @@ public class ResultRows extends ResultSetType implements VO {
     }
 
     public LocalDateTime dateTime(String fieldName, ZoneId zone) throws SQLException {
-        return dateTime(fieldNames.indexOf(fieldName), zone);
+        return dateTime(fieldNames.indexOf(fieldName.toLowerCase()), zone);
     }
 
     /**
@@ -172,7 +172,7 @@ public class ResultRows extends ResultSetType implements VO {
     }
 
     public byte[] blob(String fieldName) throws SQLException, IOException {
-        return blob(fieldNames.indexOf(fieldName));
+        return blob(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -204,6 +204,6 @@ public class ResultRows extends ResultSetType implements VO {
     }
 
     public String clob(String fieldName) throws SQLException, IOException {
-        return clob(fieldNames.indexOf(fieldName));
+        return clob(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 }

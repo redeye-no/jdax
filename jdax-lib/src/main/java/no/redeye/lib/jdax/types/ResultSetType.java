@@ -100,7 +100,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     private Object object(String fieldName, int returnType) throws SQLException {
-        return getObject(fieldNames.indexOf(fieldName), returnType);
+        return getObject(fieldNames.indexOf(fieldName.toLowerCase()), returnType);
     }
 
     /**
@@ -135,7 +135,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public BigDecimal getBigDecimal(String fieldName) throws SQLException {
-        return getBigDecimal(fieldNames.indexOf(fieldName));
+        return getBigDecimal(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -153,7 +153,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public BigInteger getBigInteger(String fieldName) throws SQLException {
-        return getBigInteger(fieldNames.indexOf(fieldName));
+        return getBigInteger(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -170,7 +170,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public boolean getBoolean(String fieldName) throws SQLException {
-        return getBoolean(fieldNames.indexOf(fieldName));
+        return getBoolean(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -187,7 +187,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public byte getByte(String fieldName) throws SQLException {
-        return getByte(fieldNames.indexOf(fieldName));
+        return getByte(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -204,7 +204,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public double getDouble(String fieldName) throws SQLException {
-        return getDouble(fieldNames.indexOf(fieldName));
+        return getDouble(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -221,7 +221,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public float getFloat(String fieldName) throws SQLException {
-        return getFloat(fieldNames.indexOf(fieldName));
+        return getFloat(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -238,7 +238,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public int getInt(String fieldName) throws SQLException {
-        return getInt(fieldNames.indexOf(fieldName));
+        return getInt(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -255,7 +255,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public long getLong(String fieldName) throws SQLException {
-        return getLong(fieldNames.indexOf(fieldName));
+        return getLong(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -272,7 +272,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public short getShort(String fieldName) throws SQLException {
-        return getShort(fieldNames.indexOf(fieldName));
+        return getShort(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -289,7 +289,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public LocalDate getDate(String fieldName) throws SQLException {
-        return getDate(fieldNames.indexOf(fieldName));
+        return getDate(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -306,7 +306,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public LocalTime getTime(String fieldName) throws SQLException {
-        return getTime(fieldNames.indexOf(fieldName));
+        return getTime(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -323,7 +323,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public Instant getTimestamp(String fieldName) throws SQLException {
-        return getTimestamp(fieldNames.indexOf(fieldName));
+        return getTimestamp(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -340,7 +340,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public String getString(String fieldName) throws SQLException {
-        return getString(fieldNames.indexOf(fieldName));
+        return getString(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -357,7 +357,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public byte[] getBytes(String fieldName) throws SQLException {
-        return getBytes(fieldNames.indexOf(fieldName));
+        return getBytes(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -374,7 +374,7 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public InputStream getBinaryStream(String fieldName) throws SQLException {
-        return getBinaryStream(fieldNames.indexOf(fieldName));
+        return getBinaryStream(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 
     /**
@@ -391,6 +391,6 @@ public abstract class ResultSetType implements AutoCloseable {
     }
 
     public Reader getCharacterStream(String fieldName) throws SQLException {
-        return getCharacterStream(fieldNames.indexOf(fieldName));
+        return getCharacterStream(fieldNames.indexOf(fieldName.toLowerCase()));
     }
 }
