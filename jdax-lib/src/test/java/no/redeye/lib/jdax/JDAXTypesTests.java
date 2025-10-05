@@ -10,9 +10,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import no.redeye.lib.jdax.types.InsertResults;
 import no.redeye.lib.jdax.types.ResultRows;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -31,7 +31,7 @@ public class JDAXTypesTests extends JDAXFeaturesTestBase {
     final AtomicInteger ai = new AtomicInteger(1024);
 
     private static final String INSERT_TYPE_TEMPLATE = """
-        INSERT INTO %s (id, field) 
+        INSERT INTO %s (id, field)
         VALUES (?, ?)""";
 
     private static final String SELECT_TYPE_TEMPLATE = "SELECT * FROM %s WHERE id = ?";
@@ -78,7 +78,7 @@ public class JDAXTypesTests extends JDAXFeaturesTestBase {
         return null;
     }
 
-    private <T> List<Long> createTypeRecord(int id, String tableName, Class<T> type, Object value) throws SQLException, IOException {
+    private <T> InsertResults createTypeRecord(int id, String tableName, Class<T> type, Object value) throws SQLException, IOException {
         String dml = String.format(INSERT_TYPE_TEMPLATE, tableName);
         return dbq.insertRow(new Object[]{id, value}, dml);
     }
@@ -86,7 +86,7 @@ public class JDAXTypesTests extends JDAXFeaturesTestBase {
     private <T> T insertAndRetrieveTypeRecord(Class fieldType, Object value, Class<T> resultType) throws SQLException, IOException {
         int id = ai.getAndIncrement();
         String tableName = createTypeTable(fieldType);
-        List<Long> created = createTypeRecord(id, tableName, fieldType, value);
+        InsertResults created = createTypeRecord(id, tableName, fieldType, value);
 
         return (T) getTypeRow(id, tableName, resultType);
     }

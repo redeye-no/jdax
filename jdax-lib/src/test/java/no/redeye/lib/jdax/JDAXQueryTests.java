@@ -2,17 +2,16 @@ package no.redeye.lib.jdax;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.List;
 import no.redeye.lib.jdax.types.AllTypesRecord;
 import no.redeye.lib.jdax.types.AlternateTypesRecord;
 import no.redeye.lib.jdax.types.NumericTypesRecord;
+import no.redeye.lib.jdax.types.InsertResults;
 import no.redeye.lib.jdax.types.ResultRows;
 import no.redeye.lib.jdax.types.TemporalTypesRecord;
+import no.redeye.lib.jdax.types.UpdateResults;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -49,9 +48,8 @@ public class JDAXQueryTests extends JDAXFeaturesTestBase {
     public void whenARecordIsInsertedExpectAListOfLongs() throws SQLException {
         String testTable = createTestTable();
         String query=INSERT_FULL_RECORD.replace("TEST_TABLE", testTable);
-        List<Long> inserted = dbq.insertRow(TEST_RECORD_ALL_VALUES, query);
-        Assertions.assertFalse(inserted.isEmpty());
-        Assertions.assertTrue(inserted.get(0) > 0);
+        InsertResults inserted = dbq.insertRow(TEST_RECORD_ALL_VALUES, query);
+        Assertions.assertTrue(inserted.count()>0);
     }
 
     @Test
@@ -59,14 +57,14 @@ public class JDAXQueryTests extends JDAXFeaturesTestBase {
     public void whenARecordIsUpdatedExpectNewValuesUponSelect() throws SQLException, IOException {
         String testTable = createTestTable();
         String query=INSERT_FULL_RECORD.replace("TEST_TABLE", testTable);
-        List<Long> inserted = dbq.insertRow(TEST_RECORD_ALL_VALUES, query);
-        
+        InsertResults inserted = dbq.insertRow(TEST_RECORD_ALL_VALUES, query);
+
         String updateQuery=UPDATE_ALL_RECORDS.replace("TEST_TABLE", testTable);
-        int updated = dbq.update(updateQuery);
+        UpdateResults updated = dbq.update(updateQuery);
 
-        Assertions.assertTrue(updated > 0, "Update count mismatch, expected at least 1 updated records");
+        Assertions.assertTrue(updated.count() > 0, "Update count mismatch, expected at least 1 updated records");
 
-        try (ResultRows selects = dbq.select(toTestTable(SELECT_ALL_COLUMNS, testTable))) {
+        try (ResultRows selects = dbq.select(toTestQuery(SELECT_ALL_COLUMNS, testTable))) {
             while (selects.next()) {
                 AllTypesRecord selected = selects.get(AllTypesRecord.class);
 
@@ -83,7 +81,7 @@ public class JDAXQueryTests extends JDAXFeaturesTestBase {
     @DisplayName("When a record is SELECTed, expect typed POJO")
     public void whenARecordSelectedExpectMatchingNewObject() throws SQLException, IOException {
 
-        try (ResultRows selects = dbq.select(toTestTable(SELECT_ALL_COLUMNS, "TEST_TABLE"))) {
+        try (ResultRows selects = dbq.select(toTestQuery(SELECT_ALL_COLUMNS, "TEST_TABLE"))) {
             while (selects.next()) {
 
                 AlternateTypesRecord selected = selects.get(AlternateTypesRecord.class);
@@ -114,7 +112,7 @@ public class JDAXQueryTests extends JDAXFeaturesTestBase {
     @DisplayName("SELECT numeric POJO")
     public void whenNumericRecordSelectedExpectMatchingNewObject() throws SQLException, IOException {
 
-        try (ResultRows selects = dbq.select(toTestTable(SELECT_NUMERIC_COLUMNS, "TEST_TABLE"))) {
+        try (ResultRows selects = dbq.select(toTestQuery(SELECT_NUMERIC_COLUMNS, "TEST_TABLE"))) {
             while (selects.next()) {
 
                 NumericTypesRecord selected = selects.get(NumericTypesRecord.class);
@@ -137,7 +135,7 @@ public class JDAXQueryTests extends JDAXFeaturesTestBase {
     @DisplayName("SELECT temporal POJO")
     public void whenDateTimeRecordSelectedExpectMatchingNewObject() throws SQLException, IOException {
 
-        try (ResultRows selects = dbq.select(toTestTable(SELECT_TEMPORAL_COLUMNS, "TEST_TABLE"))) {
+        try (ResultRows selects = dbq.select(toTestQuery(SELECT_TEMPORAL_COLUMNS, "TEST_TABLE"))) {
             while (selects.next()) {
 
                 TemporalTypesRecord selected = selects.get(TemporalTypesRecord.class);

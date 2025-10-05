@@ -2,9 +2,10 @@ package no.redeye.lib.jdax;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.List;
 import no.redeye.lib.jdax.types.AllTypesRecord;
+import no.redeye.lib.jdax.types.InsertResults;
 import no.redeye.lib.jdax.types.ResultRows;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,19 +22,24 @@ public class JDAXFeaturesNullResultsDisabledTests extends JDAXFeaturesTestBase {
 
     @BeforeEach
     public void setUp() throws Exception {
-        List<Long> identities = setUpTest(
+        InsertResults inserts = setUpTest(
                 TEST_RECORD_NULL_VALUES,
-                toTestTable(INSERT_NULLS_RECORD, TEST_TABLE),
+                toTestQuery(INSERT_NULLS_RECORD, TEST_TABLE),
                 TEST_TABLE,
-                Features.USE_GENERATED_KEYS_FLAG, Features.NULL_RESULTS_DISABLED);
+                Features.NULL_RESULTS_DISABLED);
 
-        Assertions.assertEquals(1, identities.size());
+        Assertions.assertEquals(1, inserts.count());
+    }
+
+    @AfterEach
+    public void tearDown() {
+        tearDownDS();
     }
 
     @Test
     @DisplayName("Returns null fields when null results are disabled")
     public void givenNullResultsDisabled_thenNullFieldsReturned() throws SQLException, IOException {
-        try (ResultRows selects = dbq.select(toTestTable(SELECT_ALL_COLUMNS, TEST_TABLE))) {
+        try (ResultRows selects = dbq.select(toTestQuery(SELECT_ALL_COLUMNS, TEST_TABLE))) {
             while (selects.next()) {
                 AllTypesRecord selected = selects.get(AllTypesRecord.class);
 
@@ -53,7 +59,6 @@ public class JDAXFeaturesNullResultsDisabledTests extends JDAXFeaturesTestBase {
                 Assertions.assertNotNull(selected.varcharField());
             }
         }
-        tearDownDS();
     }
 
 }
