@@ -13,9 +13,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import no.redeye.lib.jdax.types.Identities;
 import no.redeye.lib.jdax.types.QueryInputs;
-import no.redeye.lib.jdax.types.QueryResults;
+import no.redeye.lib.jdax.types.InsertResults;
 import no.redeye.lib.jdax.types.ResultRows;
+import no.redeye.lib.jdax.types.UpdateResults;
 import no.redeye.lib.jdax.types.VO;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -126,7 +128,7 @@ public class DAOType {
      * @throws SQLException
      */
     @SafeVarargs
-    public final List<Long> insertOne(VO clazz, String sql, String... returnFields) throws SQLException {
+    public final InsertResults insertOne(VO clazz, String sql, String... returnFields) throws SQLException {
         Object[] values = fields(clazz);
         return insertOne(values, sql, returnFields);
     }
@@ -147,11 +149,9 @@ public class DAOType {
      * @throws SQLException
      */
     @SafeVarargs
-    public final List<Long> insertOne(Object[] values, String sql, String... returnFields) throws SQLException {
+    public final InsertResults insertOne(Object[] values, String sql, String... returnFields) throws SQLException {
         QueryInputs qi = buildQueryInputs(values, null, sql);
-        QueryResults qr = executeInsert(qi, returnFields);
-
-        return (qr.count() == 1) ? List.of() : qr.ids(); // Empty list, means 1 record inserted
+        return executeInsert(qi, returnFields);
     }
 
     /**
@@ -166,7 +166,7 @@ public class DAOType {
      * @throws SQLException
      */
     @SafeVarargs
-    public final List<Long> insert(VO clazz, String sql, String... returnFields) throws SQLException {
+    public final InsertResults insert(VO clazz, String sql, String... returnFields) throws SQLException {
         Object[] values = fields(clazz);
         return insert(values, sql, returnFields);
     }
@@ -183,9 +183,9 @@ public class DAOType {
      * @throws SQLException
      */
     @SafeVarargs
-    public final List<Long> insert(Object[] values, String sql, String... returnFields) throws SQLException {
+    public final InsertResults insert(Object[] values, String sql, String... returnFields) throws SQLException {
         QueryInputs qi = buildQueryInputs(values, null, sql);
-        return executeInsert(qi, returnFields).ids();
+        return executeInsert(qi, returnFields);
     }
 
     /**
@@ -202,7 +202,7 @@ public class DAOType {
      *
      * @throws SQLException
      */
-    public int update(VO clazz, String sql, Object[]... ins) throws SQLException {
+    public UpdateResults update(VO clazz, String sql, Object[]... ins) throws SQLException {
         return update(clazz, null, sql, ins);
     }
 
@@ -222,7 +222,7 @@ public class DAOType {
      *
      * @throws SQLException
      */
-    public int update(VO clazz, Object[] wheres, String sql, Object[]... ins) throws SQLException {
+    public UpdateResults update(VO clazz, Object[] wheres, String sql, Object[]... ins) throws SQLException {
         Object[] values = fields(clazz);
         return update(values, wheres, sql, ins);
     }
@@ -241,9 +241,9 @@ public class DAOType {
      *
      * @throws SQLException
      */
-    public int update(Object[] values, String sql, Object[]... ins) throws SQLException {
+    public UpdateResults update(Object[] values, String sql, Object[]... ins) throws SQLException {
         QueryInputs qi = buildQueryInputs(values, null, ins, sql);
-        return executeUpdate(qi).count();
+        return executeUpdate(qi);
     }
 
     /**
@@ -262,9 +262,9 @@ public class DAOType {
      *
      * @throws SQLException
      */
-    public int update(Object[] values, Object[] wheres, String sql, Object[]... ins) throws SQLException {
+    public UpdateResults update(Object[] values, Object[] wheres, String sql, Object[]... ins) throws SQLException {
         QueryInputs qi = buildQueryInputs(values, wheres, ins, sql);
-        return executeUpdate(qi).count();
+        return executeUpdate(qi);
     }
 
     private QueryInputs buildQueryInputs(Object[] values, Object[] wheres, Object[][] ins, String sql) throws SQLException {
@@ -299,6 +299,7 @@ public class DAOType {
         int insArrayIndex = 0;
         boolean isFirstParam = true;
 
+        logger.debug("INQ: {}" , sql);
         while (matcher.find()) {
             bigQuery.append(sql.substring(queryBuilderIndex, matcher.start()));
 
@@ -349,7 +350,7 @@ public class DAOType {
             } else {
                 if (null != wheres) {
                     if (wheres.length <= valuesSrcIndex) {
-                        throw new SQLException("Insufficient number of values provided for query params");
+                        throw new SQLException("Insufficient number of values provided for query params " + wheres.length + "/" + valuesSrcIndex);
                     }
                     // Copy params with no modifications.
                     allValues.add(wheres[valuesSrcIndex]);
@@ -383,14 +384,17 @@ public class DAOType {
         return new ResultRows(ps.executeQuery(), ps, allowNulls);
     }
 
-    private QueryResults executeInsert(QueryInputs qi, String[] fields) throws SQLException {
+    private InsertResults executeInsert(QueryInputs qi, String[] fields) throws SQLException {
         logger.debug("SQL: {}", qi.sql());
         boolean isReturningGeneratedKeys = true;
         PreparedStatement ps;
-        if (Connector.enabled(DS_NAME, Features.USE_GENERATED_KEYS_FLAG)) {
-            ps = Connector.connection(DS_NAME).prepareStatement(qi.sql(), Statement.RETURN_GENERATED_KEYS);
-        } else if ((null != fields) && (fields.length > 0) && (null != fields[0])) {
+
+        if ((null != fields) && (fields.length > 0) && (null != fields[0]) && (!fields[0].isBlank())) {
+            // Explicit column names requested
             ps = Connector.connection(DS_NAME).prepareStatement(qi.sql(), fields);
+        } else if (Connector.enabled(DS_NAME, Features.USE_GENERATED_KEYS_FLAG)) {
+            // Generic generated keys
+            ps = Connector.connection(DS_NAME).prepareStatement(qi.sql(), Statement.RETURN_GENERATED_KEYS);
         } else {
             ps = Connector.connection(DS_NAME).prepareStatement(qi.sql());
             isReturningGeneratedKeys = false;
@@ -398,33 +402,42 @@ public class DAOType {
         return query(ps, qi, !isReturningGeneratedKeys);
     }
 
-    private QueryResults executeUpdate(QueryInputs qi) throws SQLException {
+    private UpdateResults executeUpdate(QueryInputs qi) throws SQLException {
         logger.debug("SQL: {}", qi.sql());
         boolean returnCount = true;
 
         PreparedStatement ps = Connector.connection(DS_NAME).prepareStatement(qi.sql());
 
-        return query(ps, qi, returnCount);
+        InsertResults result = query(ps, qi, returnCount);
+        return new UpdateResults(result.count());
     }
 
-    private QueryResults query(PreparedStatement ps, QueryInputs qi, boolean returnCount) throws SQLException {
+    private InsertResults query(PreparedStatement ps, QueryInputs qi, boolean returnCount) throws SQLException {
         try (ps) {
             bind(ps, qi.values());
 
             int updateCount = ps.executeUpdate();
             logger.debug("Update count: {}", updateCount);
             if (returnCount) {
-                return new QueryResults(updateCount);
+                return new InsertResults(updateCount);
             } else {
-                // Retrieve the table identity number
+                // Retrieve the row identities
+                logger.debug("Retrieve row identities");
                 try (ResultSet keys = ps.getGeneratedKeys()) {
-                    List<Long> identities = new ArrayList();
+                    List<Object> identities = new ArrayList();
                     if ((null != keys) && (keys.next())) {
+                        logger.debug("Row identities count = {}", keys.getMetaData().getColumnCount());
                         for (int i = 1; i <= keys.getMetaData().getColumnCount(); i++) {
-                            identities.add(keys.getLong(i));
+                            Object o = keys.getObject(i);
+                            logger.debug("Column identity value = {}", o);
+                            if (null != o) {
+                                identities.add(keys.getMetaData().getColumnType(i));
+                                identities.add(keys.getObject(i));
+                            }
                         }
                     }
-                    return new QueryResults(identities);
+
+                    return new InsertResults(new Identities(identities));
                 }
             }
         }
