@@ -7,10 +7,10 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.List;
 import java.util.function.Function;
 import javax.sql.DataSource;
 import no.redeye.lib.jdax.types.AllTypesRecord;
+import no.redeye.lib.jdax.types.InsertResults;
 import no.redeye.lib.jdax.types.TestDAO;
 import no.redeye.lib.jdax.types.ResultRows;
 import org.junit.jupiter.api.AfterEach;
@@ -42,12 +42,12 @@ public class JDBCApiTests extends TestBase{
             VARCHAR_VALUE,
             BLOB_VALUE,
             CLOB_VALUE
-    );    
-    
+    );
+
     @Test
     public void whenInsertVOAndReturnIdentityFieldExpectUpdateAndGetGenerateKeys() throws SQLException {
         TestDAO dao = new TestDAO(DS_NAME);
-        List<Long> id = dao.insertWithIdentityField(VO);
+        InsertResults id = dao.insertWithIdentityField(VO);
 
         assertPrepareStatementWithQueryAndFields();
         assertExecuteUpdate();
@@ -59,7 +59,7 @@ public class JDBCApiTests extends TestBase{
     @Test
     public void whenInsertVOAndReturnSequenceFieldExpectUpdateAndGetGenerateKeys() throws SQLException {
         TestDAO dao = new TestDAO(DS_NAME);
-        List<Long> id = dao.insertWithSequenceField(VO);
+        InsertResults id = dao.insertWithSequenceField(VO);
 
         assertPrepareStatementWithQueryAndFields();
         assertExecuteUpdate();
@@ -100,7 +100,7 @@ public class JDBCApiTests extends TestBase{
         }
         assertCloseResultSet();
     }
-    
+
     @Test
     public void whenConnectionIsNotUsedThenExpectNoCommit() throws SQLException {
         Connector.commit(DS_NAME);

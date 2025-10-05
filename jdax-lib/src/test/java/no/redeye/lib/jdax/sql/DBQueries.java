@@ -7,11 +7,12 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import no.redeye.lib.jdax.DAOType;
+import no.redeye.lib.jdax.types.InsertResults;
 import no.redeye.lib.jdax.types.ResultRows;
+import no.redeye.lib.jdax.types.UpdateResults;
 import no.redeye.lib.jdax.types.VO;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,12 +30,12 @@ public class DBQueries {
         dao = new DAOType(n);
     }
 
-    public List<Long> insertRow(Object[] row, String query) throws SQLException {
-        return dao.insertOne(row, query);
+    public InsertResults insertRow(Object[] row, String query, String... returnFields) throws SQLException {
+        return dao.insertOne(row, query, returnFields);
     }
 
-    public List<Long> insertRow(VO row, String query) throws SQLException {
-        return dao.insertOne(row, query);
+    public InsertResults insertRow(VO row, String query, String... returnFields) throws SQLException {
+        return dao.insertOne(row, query, returnFields);
     }
 
     public ResultRows select(String query) throws SQLException {
@@ -45,7 +46,7 @@ public class DBQueries {
         return dao.select(o, query);
     }
 
-    public int update(String sql) throws SQLException {
+    public UpdateResults update(String sql) throws SQLException {
         return dao.update(
                 new Object[0],
                 sql);
@@ -95,7 +96,7 @@ public class DBQueries {
             klobu CLOB
         )""";
 
-    public int createTestTables() throws SQLException {
+    public UpdateResults createTestTables() throws SQLException {
         return dao.update(new Object[]{-1}, CREATE_TEST_TABLE);
     }
 
@@ -137,10 +138,10 @@ public class DBQueries {
         charField CHAR(16),
         varcharField VARCHAR(255),
         blobField BLOB,
-        clobField CLOB 
+        clobField CLOB
     )""";
 
-    public int createMultiTypesTable(String tableName) throws SQLException {
+    public UpdateResults createMultiTypesTable(String tableName) throws SQLException {
         String ddl = String.format(CREATE_MULTITYPES_TABLE_TEMPLATE, tableName);
         return dao.update(new Object[]{-1}, ddl);
     }

@@ -2,12 +2,9 @@ package no.redeye.lib.jdax;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.List;
-import no.redeye.lib.jdax.types.AllTypesRecord;
-import no.redeye.lib.jdax.types.ResultRows;
+import no.redeye.lib.jdax.types.InsertResults;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,49 +13,44 @@ import org.mockito.junit.jupiter.MockitoExtension;
 /**
  */
 @ExtendWith(MockitoExtension.class)
-public class JDAXFeaturesNullResultsEnabledTests extends JDAXFeaturesTestBase {
-
-    private final String TEST_TABLE = "givenNullResultsEnabled_thenNullFieldsReturned";
-
-    @BeforeEach
-    public void setUp() throws Exception {
-        List<Long> identities = setUpTest(
-                TEST_RECORD_NULL_VALUES,
-                toTestTable(INSERT_NULLS_RECORD, TEST_TABLE),
-                TEST_TABLE,
-                Features.USE_GENERATED_KEYS_FLAG);
-
-        Assertions.assertEquals(1, identities.size());
-    }
+public class JDAXFeaturesInsertIdentitiesTests extends JDAXFeaturesTestBase {
 
     @AfterEach
     public void tearDown() {
+        tearDownDS();
     }
 
     @Test
-    @DisplayName("Returns null fields when null results are disabled")
-    public void givenNullResultsEnabled_thenNullFieldsReturned() throws SQLException, IOException {
-        try (ResultRows selects = dbq.select(toTestTable(SELECT_ALL_COLUMNS, TEST_TABLE))) {
-            while (selects.next()) {
-                AllTypesRecord selected = selects.get(AllTypesRecord.class);
+    @DisplayName("Returns identity fields when USE_GENERATED_KEYS_FLAG is set")
+    public void givenGeneratedKeysEnabled_thenIdentityFieldsReturned() throws SQLException, IOException {
 
-                Assertions.assertEquals(0l, selected.bigintField());
-                Assertions.assertNull(selected.blobField());
-                Assertions.assertNull(selected.charField());
-                Assertions.assertNull(selected.clobField());
-                Assertions.assertNull(selected.dateField());
-                Assertions.assertNull(selected.decimalField());
-                Assertions.assertEquals(0.0d, selected.doubleField());
-                Assertions.assertEquals(0.0d, selected.floatField());
-                Assertions.assertEquals(0, selected.integerField());
-                Assertions.assertNull(selected.numericField());
-                Assertions.assertEquals(0.0f, selected.realField());
-                Assertions.assertNull(selected.timeField());
-                Assertions.assertNull(selected.timestampField());
-                Assertions.assertNull(selected.varcharField());
-            }
-        }
-        tearDownDS();
+        String testTable = "givenGeneratedKeysEnabled_thenIdentityFieldsReturned";
+
+        InsertResults inserts = setUpTest(
+                TEST_RECORD_ALL_VALUES,
+                toTestQuery(INSERT_FULL_RECORD, testTable),
+                testTable,
+                Features.USE_GENERATED_KEYS_FLAG);
+
+        Assertions.assertEquals(1, inserts.count());
+        Assertions.assertTrue(inserts.hasIdentities());
+        Assertions.assertNotNull(inserts.type(0));
+        Assertions.assertEquals(1L, inserts.longIdentity(0).longValue());
+        Assertions.assertEquals("1", inserts.stringIdentity(0));
+    }
+
+    @Test
+    @DisplayName("Expect DB to throw exception when requesting identity fields without USE_GENERATED_KEYS_FLAG")
+    public void givenNoGeneratedKeysEnabled_thenIdentityFieldsFail() throws SQLException, IOException {
+
+        String testTable = "givenNoGeneratedKeysEnabled_thenIdentityFieldsFail";
+            InsertResults inserts = setUpTest(
+                    TEST_RECORD_ALL_VALUES,
+                    toTestQuery(INSERT_FULL_RECORD, testTable),
+                    testTable);
+        Assertions.assertEquals(1, inserts.count());
+        Assertions.assertFalse(inserts.hasIdentities());
+        Assertions.assertNull( inserts.longIdentity(0));
     }
 
 }
