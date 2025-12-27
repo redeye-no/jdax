@@ -1,8 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
-
 package no.redeye.lib.jdax.types;
 
 import java.sql.SQLException;
@@ -15,13 +10,13 @@ public class TestDAO {
 
     private final DAOType dao;
 
-    public TestDAO(String n) {
-        dao = new DAOType(n);
+    public TestDAO(String n, String c) {
+        dao = new DAOType(n, c);
     }
 
     /*
     INSERT queries
-    */
+     */
     public static final String ID_FIELD = "id";
     public static final String INSERT_W_IDENTITY = "insert into dvo (number, name) values (#, ?, ?)";
 
@@ -47,31 +42,36 @@ public class TestDAO {
 
     /*
     SELECT queries
-    */
+     */
     private static final String SELECT_ALL_NAMED_FIELDS = "select id, number, name from dvo";
+
     public ResultRows selectAllNamedFields() throws SQLException {
         return dao.select(SELECT_ALL_NAMED_FIELDS);
     }
 
     private static final String SELECT_ALL_NAMED_FIELDS_FOR_SOME_ROWS = "select id, number, name from dvo where ";
+
     public ResultRows selectAllNamedFieldsForSomeRows(Object[] values) throws SQLException {
         return dao.select(values, SELECT_ALL_NAMED_FIELDS_FOR_SOME_ROWS);
     }
 
     private static final String SELECT_IN_ODD = "select * from dvo where id in (??)";
+
     public ResultRows selectOddIDs(Object[][] ins) throws SQLException {
         return dao.select(SELECT_IN_ODD, ins);
     }
 
     private static final String SELECT_ONE_ID = "select * from dvo where id = ?";
+
     public ResultRows selectOneID(Object[] values) throws SQLException {
         return dao.select(values, SELECT_ONE_ID);
     }
 
     /*
     UPDATE queries
-    */
+     */
     private static final String UPDATE_ONE_ROW = "update dvo set name = ? where id = ?";
+
     public UpdateResults updateOneRow(Object[] values, Object[] wheres) throws SQLException {
         return dao.update(values, wheres, UPDATE_ONE_ROW);
     }

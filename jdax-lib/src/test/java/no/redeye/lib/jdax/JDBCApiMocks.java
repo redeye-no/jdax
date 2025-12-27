@@ -1,6 +1,5 @@
 package no.redeye.lib.jdax;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,22 +9,18 @@ import java.sql.Types;
 import java.util.function.Function;
 import javax.sql.DataSource;
 import no.redeye.lib.jdax.types.AllTypesRecord;
-import no.redeye.lib.jdax.types.InsertResults;
-import no.redeye.lib.jdax.types.TestDAO;
-import no.redeye.lib.jdax.types.ResultRows;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  */
-@ExtendWith(MockitoExtension.class)
-public class JDBCApiTests extends TestBase{
+public abstract class JDBCApiMocks extends TestBase {
 
     protected final AllTypesRecord VO = new AllTypesRecord(
             ID, INTEGER_VALUE,
@@ -44,85 +39,22 @@ public class JDBCApiTests extends TestBase{
             CLOB_VALUE
     );
 
-    @Test
-    public void whenInsertVOAndReturnIdentityFieldExpectUpdateAndGetGenerateKeys() throws SQLException {
-        TestDAO dao = new TestDAO(DS_NAME);
-        InsertResults id = dao.insertWithIdentityField(VO);
+    protected static final String DATASOURCE_NAME = "JDBCApiTests";
+    protected static final String CONTEXT_NAME = DATASOURCE_NAME;
 
-        assertPrepareStatementWithQueryAndFields();
-        assertExecuteUpdate();
-        assertGetGeneratedKeys();
-        assertGetNextKey();
-        assertClosePreparedStatement();
-    }
+    private MockedStatic<Connector> connector;
 
-    @Test
-    public void whenInsertVOAndReturnSequenceFieldExpectUpdateAndGetGenerateKeys() throws SQLException {
-        TestDAO dao = new TestDAO(DS_NAME);
-        InsertResults id = dao.insertWithSequenceField(VO);
-
-        assertPrepareStatementWithQueryAndFields();
-        assertExecuteUpdate();
-        assertGetGeneratedKeys();
-        assertGetNextKey();
-        assertClosePreparedStatement();
-    }
-
-    @Test
-    public void whenInsertValuesAndReturnSequenceFieldExpectUpdateAndGetGenerateKeys() throws SQLException, IOException {
-        TestDAO dao = new TestDAO(DS_NAME);
-        Object[] values = new Object[]{"-1", "44", "four four"};
-        try (ResultRows results = dao.selectAllNamedFieldsForSomeRows(values)) {
-            assertPrepareStatementWithQueryOnly();
-            assertExecuteQuery();
-            assertGetMetadata();
-        }
-        assertCloseResultSet();
-    }
-
-    @Test
-    public void whenSimpleQueryWithResultsReturnsExpectResultsetAndCallToClose() throws SQLException, IOException {
-        TestDAO dao = new TestDAO(DS_NAME);
-        try (ResultRows results = dao.selectAllNamedFields()) {
-            assertPrepareStatementWithQueryOnly();
-            assertExecuteQuery();
-        }
-        assertCloseResultSet();
-    }
-
-    @Test
-    public void whenSelectWithINsQueryReturnsExpectResultsetAndCallToClose() throws SQLException, IOException {
-        TestDAO dao = new TestDAO(DS_NAME);
-        Object[][] ins = new Object[][]{{"-1", "44", "four four"}};
-        try (ResultRows results = dao.selectOddIDs(ins)) {
-            assertPrepareStatementWithQueryOnly();
-            assertExecuteQuery();
-        }
-        assertCloseResultSet();
-    }
-
-    @Test
-    public void whenConnectionIsNotUsedThenExpectNoCommit() throws SQLException {
-        Connector.commit(DS_NAME);
-        assertNoConnectionCommit();
-    }
-
-    @Test
-    public void whenConnectionIsNotUsedThenExpectNoRollbacks() throws SQLException {
-        Connector.rollback(DS_NAME);
-        assertNoConnectionRollback();
-    }
-
-    private static final String DS_NAME = "ds";
-
+    @Mock
+    private ConnectorContext context;
+    
     @Mock
     private DataSource dataSource;
 
     @Mock
-    private Connection connection;
+    protected Connection connection;
 
     @Mock
-    private PreparedStatement ps;
+    protected PreparedStatement ps;
 
     @Mock
     protected ResultSet rs;
@@ -133,10 +65,13 @@ public class JDBCApiTests extends TestBase{
     @Mock
     private ResultSetMetaData metaData;
 
-//    private final TestVO VO = new TestVO("1", "911", "nine one one");
+    @BeforeAll
+    public void beforeAll() throws SQLException {
+        setUpDataSource(DATASOURCE_NAME, Features.NULL_RESULTS_DISABLED);
+    }
 
     @BeforeEach
-    public void setUp() throws Exception {
+    public void beforeEach() throws Exception {
         Mockito.lenient().when(dataSource.getConnection()).thenReturn(connection);
 
         Mockito.lenient().when(connection.createStatement()).thenReturn(ps);
@@ -165,21 +100,41 @@ public class JDBCApiTests extends TestBase{
 
         Mockito.lenient().when(keys.next()).thenReturn(true).thenReturn(true).thenReturn(true).thenReturn(false);
 
-        Connector.prepare(DS_NAME, new Function<String, DataSource>() {
+        Mockito.lenient().when(context.connection(DATASOURCE_NAME)).thenReturn(connection);
+        
+        connector = Mockito.mockStatic(Connector.class);
+
+        connector
+                .when(() -> Connector.context(Mockito.anyString()))
+                .thenAnswer(inv -> context);
+
+        connector
+                .when(() -> Connector.has(Mockito.anyString()))
+                .thenAnswer(inv -> true);
+
+        Connector.register(DATASOURCE_NAME, new Function<String, DataSource>() {
             @Override
             public DataSource apply(String t) {
                 return dataSource;
             }
         }, Features.AUTO_COMMIT_ENABLED);
+//
+//        context = Connector.context(CONTEXT_NAME);
 
         Assertions.assertNotNull(dataSource);
     }
 
     @AfterEach
-    public void tearDown() throws Exception {
-        Connector.commit(DS_NAME);
-        Connector.close(DS_NAME);
-        Connector.remove(DS_NAME);
+    public void afterEach() throws Exception {
+        try (ConnectorContext cc = context) {
+        }
+        Connector.detach(CONTEXT_NAME);
+        connector.close();
+    }
+
+    @AfterAll
+    public void afterAll() throws SQLException {
+        tearDownDS(DATASOURCE_NAME);
     }
 
     protected void assertPrepareStatementWithQueryOnly() throws SQLException {

@@ -26,8 +26,8 @@ public class DBQueries {
 
     private final DAOType dao;
 
-    public DBQueries(String n) {
-        dao = new DAOType(n);
+    public DBQueries(String n, String c) {
+        dao = new DAOType(n, c);
     }
 
     public InsertResults insertRow(Object[] row, String query, String... returnFields) throws SQLException {
@@ -124,7 +124,7 @@ public class DBQueries {
 
     private static final String CREATE_MULTITYPES_TABLE_TEMPLATE = """
         CREATE TABLE %s (
-        id INTEGER GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1) PRIMARY KEY,
+        id INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1),
         integerField INT,
         bigintField BIGINT,
         realField REAL,

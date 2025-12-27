@@ -12,11 +12,14 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import no.redeye.lib.jdax.sql.DBQueries;
 import no.redeye.lib.jdax.types.InsertResults;
 import no.redeye.lib.jdax.types.ResultRows;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,7 +31,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class JDAXTypesTests extends JDAXFeaturesTestBase {
 
+    private final String DATASOURCE_NAME = "JDAXTypesTests";
     final AtomicInteger ai = new AtomicInteger(1024);
+    private ConnectorContext sharedContext;
 
     private static final String INSERT_TYPE_TEMPLATE = """
         INSERT INTO %s (id, field)
@@ -40,16 +45,27 @@ public class JDAXTypesTests extends JDAXFeaturesTestBase {
 
     @BeforeAll
     public void beforeAll() throws SQLException {
-        setUpDS(Features.NULL_RESULTS_DISABLED);
+        setUpDataSource(DATASOURCE_NAME, Features.NULL_RESULTS_DISABLED);
+    }
+
+    @BeforeEach
+    public void beforeEach() throws SQLException {
+        sharedContext = Connector.context(DATASOURCE_NAME);
+    }
+
+    @AfterEach
+    public void afterEach() throws SQLException {
+        try (ConnectorContext cc = sharedContext) {
+        }
     }
 
     @AfterAll
-    public void tearDown() {
-        tearDownDS();
+    public void tearDown() throws SQLException {
+        tearDownDS(DATASOURCE_NAME);
     }
 
     private String createTypeTable(Class<?> javaType) throws SQLException {
-        return dbq.createSingleTypeTable(javaType);
+        return new DBQueries(DATASOURCE_NAME, DATASOURCE_NAME).createSingleTypeTable(javaType);
     }
 
     private static final Map<Class<?>, Integer> JAVA_TO_JDBC_TYPE = new HashMap<>();
@@ -65,7 +81,7 @@ public class JDAXTypesTests extends JDAXFeaturesTestBase {
     private <T> T getTypeRow(int id, String tableName, Class<T> type) throws SQLException, IOException {
         String dml = String.format(SELECT_TYPE_TEMPLATE, tableName);
 
-        try (ResultRows selects = dbq.select(new Object[]{id}, dml)) {
+        try (ResultRows selects = new DBQueries(DATASOURCE_NAME, DATASOURCE_NAME).select(new Object[]{id}, dml)) {
 
             if (selects.next()) {
                 logger.info("Java {} to JDBC type {}", type, JAVA_TO_JDBC_TYPE.get(type));
@@ -73,14 +89,14 @@ public class JDAXTypesTests extends JDAXFeaturesTestBase {
             }
         } finally {
             dml = String.format(DROP_TYPE_TEMPLATE, tableName);
-            dbq.update(dml);
+            new DBQueries(DATASOURCE_NAME, DATASOURCE_NAME).update(dml);
         }
         return null;
     }
 
     private <T> InsertResults createTypeRecord(int id, String tableName, Class<T> type, Object value) throws SQLException, IOException {
         String dml = String.format(INSERT_TYPE_TEMPLATE, tableName);
-        return dbq.insertRow(new Object[]{id, value}, dml);
+        return new DBQueries(DATASOURCE_NAME, DATASOURCE_NAME).insertRow(new Object[]{id, value}, dml);
     }
 
     private <T> T insertAndRetrieveTypeRecord(Class fieldType, Object value, Class<T> resultType) throws SQLException, IOException {
@@ -238,6 +254,9 @@ public class JDAXTypesTests extends JDAXFeaturesTestBase {
         Object candidate = Boolean.TRUE;
         testInsertAndRetrieveTypeRecord(Boolean.class, candidate, Boolean.class, candidate);
         testInsertAndRetrieveTypeRecord(Boolean.class, candidate, String.class, "true");
+
+        testInsertAndRetrieveTypeRecord(Boolean.class, (byte) 1, Integer.class, (int) 1);
+        testInsertAndRetrieveTypeRecord(Boolean.class, (byte) 1, String.class, "true");
     }
 
     @Test
@@ -280,10 +299,18 @@ public class JDAXTypesTests extends JDAXFeaturesTestBase {
     @Test
     public void byteTest() throws SQLException, IOException {
         testInsertAndRetrieveTypeRecord(Byte.class, (byte) 123);
+
+        testInsertAndRetrieveTypeRecord(Byte.class, (byte) 1, String.class, "1");
+        testInsertAndRetrieveTypeRecord(Byte.class, (byte) 1, Integer.class, (int) 1);
     }
 
     @Test
     public void bytesTest() throws SQLException, IOException {
+        testInsertAndRetrieveTypeRecord(Byte[].class, new Byte[]{3, 2, 1, 0});
+    }
+
+    @Test
+    public void clobTest() throws SQLException, IOException {
         testInsertAndRetrieveTypeRecord(Byte[].class, new Byte[]{3, 2, 1, 0});
     }
 }

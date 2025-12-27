@@ -2,6 +2,7 @@ package no.redeye.lib.jdax;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import com.zaxxer.hikari.HikariPoolMXBean;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -25,8 +26,9 @@ public class TestBase {
 
     protected static Logger logger = LogManager.getLogger("apiLogger");
 
-    protected final String DATASOURCE_NAME = "jdax-ds";
-    private final DBQueries dbq = new DBQueries(DATASOURCE_NAME);
+    protected final String BASE_DATASOURCE_NAME = "jdax-ds";
+    protected final String BASE_CONTEXT_NAME = BASE_DATASOURCE_NAME;
+    private final DBQueries dbq = new DBQueries(BASE_DATASOURCE_NAME, BASE_CONTEXT_NAME);
 
     protected final int ID = 1;
     protected final int INTEGER_VALUE = 1010101010;
@@ -36,12 +38,9 @@ public class TestBase {
     protected final double DOUBLE_VALUE = 1234567890123456789.2d;
     protected final BigDecimal DECIMAL_VALUE = new BigDecimal("123456789012345678.90");
     protected final BigDecimal NUMERIC_VALUE = new BigDecimal("123456789012345678.91");
-//    protected final BigDecimal DECIMAL_VALUE = new BigDecimal("123456789.90");
-//    protected final BigDecimal NUMERIC_VALUE = new BigDecimal("123456789.91");
     protected final LocalDate DATE_VALUE = LocalDate.now().plusDays(7);
     protected final LocalTime TIME_VALUE = LocalTime.MIN;
     protected final Instant TIMESTAMP_VALUE = Instant.now();
-//    protected final char CHAR_VALUE = 'c';
     protected final String CHAR_VALUE = "char";
     protected final String VARCHAR_VALUE = "string";
     protected final InputStream BLOB_VALUE = new ByteArrayInputStream(new byte[0]);
@@ -51,30 +50,33 @@ public class TestBase {
         System.setProperty("derby.stream.error.file", "target/derby.log");
     }
 
-    protected void setUpDS(Features... features) throws SQLException {
+    protected void setUpDataSource(String dsName, Features... features) throws SQLException {
         logger.info("Set up datasource features, {}", features);
-        initDS(features);
+        initDS(dsName, features);
+        Connector.context(BASE_CONTEXT_NAME);
     }
 
-    protected void setUpTestTables() throws SQLException {
+    protected void setUpTestTables(String dsName, String cxName) throws SQLException {
         logger.info("Set up test tables");
-        dbq.createTestTables();
+        new DBQueries(dsName, cxName).createTestTables();
+        d("setUpTestTables", dsName);
     }
 
-    protected void setUpTypesTable(String tableName) throws SQLException {
+    protected void setUpTypesTable(String tableName, String dsName, String cxName) throws SQLException {
         logger.info("Set up test table {}", tableName);
-        dbq.createMultiTypesTable(tableName);
+        new DBQueries(dsName, cxName).createMultiTypesTable(tableName);
+        d("setUpTypesTable " + tableName, dsName);
     }
 
-    protected void tearDownDS() {
-        logger.info("Tear down datasource {}", DATASOURCE_NAME);
-        Connector.close(DATASOURCE_NAME);
-        Connector.remove(DATASOURCE_NAME);
-    }
+    protected void tearDownDS(String dsName) {
+        logger.info("Tear down datasource {}", BASE_DATASOURCE_NAME);
+        d("tearDownDS", dsName);
+//        Connector.close(DATASOURCE_NAME);
+//        Connector.remove(DATASOURCE_NAME);
 
-    protected void _createRecordWithNonNullFields() {
-        Connector.close(DATASOURCE_NAME);
-        Connector.remove(DATASOURCE_NAME);
+//        try(ConnectorContext cc=CurrentContext.get()){} catch (SQLException ex) {
+//            System.getLogger(TestBase.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+//        }
     }
 
     public static String clob(Reader reader) throws SQLException {
@@ -95,7 +97,7 @@ public class TestBase {
         return sb.toString();
     }
 
-    private synchronized void initDS(Features... features) throws SQLException {
+    private synchronized void initDS(String dsName, Features... features) throws SQLException {
         DataSource dataSource = dataSource();
 
         Function<String, DataSource> dsCreator = new Function<String, DataSource>() {
@@ -105,7 +107,8 @@ public class TestBase {
             }
         };
 
-        Connector.prepare(DATASOURCE_NAME, dsCreator, features);
+        Connector.register(dsName, dsCreator, features);
+        d("initDS", dsName);
     }
 
     private synchronized DataSource dataSource() {
@@ -133,7 +136,7 @@ public class TestBase {
             config.addDataSourceProperty("oracle.jdbc.ReadTimeout", readTimeout);
         }
 
-        String maximumPoolSize = "1";
+        String maximumPoolSize = "4";
 
         if (maximumPoolSize.length() > 0) {
             config.setMaximumPoolSize(Integer.parseInt(maximumPoolSize));
@@ -148,5 +151,34 @@ public class TestBase {
         config.setPassword("sa");
 
         return config;
+    }
+
+    protected void d(String s, String dsName) {
+//            System.out.println("DS- Hikari DS " + s);
+
+        if (Connector.ds(dsName) instanceof HikariDataSource hikari) {
+
+            HikariPoolMXBean mxBean = hikari.getHikariPoolMXBean();
+
+            logger.info(
+                    "Hikari stats: total={}, active={}, idle={}, waiting={}, [ DS={}, {} ]",
+                    mxBean.getTotalConnections(),
+                    mxBean.getActiveConnections(),
+                    mxBean.getIdleConnections(),
+                    mxBean.getThreadsAwaitingConnection(),
+                    dsName,
+                    s);
+
+//            int total = mxBean.getTotalConnections();
+//            int active = mxBean.getActiveConnections();
+//            int idle = mxBean.getIdleConnections();
+//            int awaiting = mxBean.getThreadsAwaitingConnection();
+//            
+//            System.out.println("DS-   total = " + total);
+//            System.out.println("DS-   active = " + active);
+//            System.out.println("DS-   idle = " + idle);
+//            System.out.println("DS-   awaiting = " + awaiting);
+        }
+
     }
 }
