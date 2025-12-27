@@ -116,7 +116,7 @@ public class ResultRows extends ResultSetType implements VO {
             values[i] = TypeConverter.getValueForType(resultSet, columnIndex, columnType, allowNulls, targetType);
         }
 
-        dumpit(requestedParameterTypes, values);
+        // dumpit(requestedParameterTypes, values);
         return values;
     }
 
