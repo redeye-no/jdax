@@ -1,135 +1,295 @@
 
-# jdax
+# JDAX Connection Architecture
 
-A data access layer on top of JDBC for implementing CRUD operation.
+This document describes how ConnectorContext, and Connector work together to provide
+explicit, portable, and deterministic connection and transaction handling.
 
-JDAX is a Java library that simplifies data access operations by providing an abstraction layer over JDBC. 
-It streamlines CRUD operations through a consistent API for data retireval and management.
+The design deliberately avoids container-managed transactions, `@Transactional`, and `ThreadLocal`
+while remaining fully usable inside and outside Jakarta EE containers such as TomEE.
 
-## Features
+## Design goals
 
-- Simplified JDBC connection configuration
-- Consistent API for CRUD operations
-- Effective SQL syntax safe from injection attacks
-- Advanced query augmentation
-- Almost seamless integration with existing JDBC code
-- Support for both basic data types (ints, and Strings) to comples objects and records
+JDAX is built around the following goals:
 
-## Installation
+- Manual control over `commit()` and `rollback()`
+- Support for multiple DataSources in the same unit of work
+- Deterministic connection lifecycle
+- No dependency on JTA or container transaction managers
+- No use of `ThreadLocal`
+- Ability to run:
+  - inside Jakarta EE
+  - in unit tests
+  - in CLI tools and batch jobs
 
-    <dependency>
-        <groupId>no.redeye</groupId>
-        <artifactId>jdax-lib</artifactId>
-    </dependency>
+## Core components
 
-## Programming against the library API
+### ConnectorContext
 
-The following objects make up the basic framework:
+`ConnectorContext` represents a unit of work.
 
-|Class	|Description|
-|-------|-----------|
-| `Connector`	| Provides a mechanism for managing JDBC connections. |
-| `DAOType`	| Access class providing read, write and delete operations. |
-| `Features`	| Flags for configuring the behaviour of the connections. |
-| `VO`          | A type definition for data access and value objects. |
-| `ResultRows`  | A return type with DB query results. |
+Responsibilities:
 
-# Usage
+- Owns all opened `Connection` instances
+- Maps connections by DataSource name
+- Controls transaction boundaries
+- Performs cleanup and safety checks
 
-## Establishing a Connection
+Key characteristics:
 
-The first call to the API must configure the connection parameters. This is done through the `Connector` class.
+- One `ConnectorContext` per unit of work
+- One `Connection` per DataSource per context
+- Explicit lifecycle: create -> use -> commit/rollback -> close
 
-| Method | Description |
-|---|---|
-| `Connector.prepare()` | Set up a connectin to a datasource |
+Typical responsibilities:
 
-The prepare method has 2 variants, 1 of which must be called during pool configuration (usually startup):
+- Lazily open connections when first requested
+- Track open vs closed connections
+- Close all connections on completion
+- Optionally force-close leaked connections
+
+### ConnectorContext
+
+`ConnectorContext` is a context holder, not a lifecycle manager.
+
+Responsibilities:
+
+- Hold a reference to the current `ConnectorContext`
+- Make the active context accessible to static APIs
+- Be explicitly set and cleared by the caller
+
+Important notes:
+
+- `ConnectorContext` does not create or manage connections
+- It does not commit or rollback
+- It does not use `ThreadLocal`
+
+Think of it as a scoped registry:
 
 ```java
-Connector.prepare(dsName, DataSourceFunction, Features);
-Connector.prepare(dsName, DataSource, Features);
-```
+ConnectorContext.set(ConnectorContext);
+// work happens here
+ConnectorContext.clear();
+````
 
-One takes a function that returns a DataSource, the other takes a configured DataSource.
+The scope is controlled externally (interceptor, bootstrap code, test harness).
 
-The optional `Features` are used for setting various connection flags.
+### Connector
+
+`Connector` is the public entry point used by application code.
+
+Responsibilities:
+
+ Resolve the current `ConnectorContext`
+ Delegate connection acquisition to the context
+ Hide lifecycle complexity from business code
+
+Key rule:
+
+> `Connector.context(name)` always returns the connection associated with the named unit of work.
 
 Example:
 
 ```java
-DataSource dataSource = new HikariDataSource(new new HikariConfig());
-Connector.prepare("ds-users", dataSource, Features.AUTO_COMMIT_ENABLED);
+ConnectorContext cc = Connector.context("shoppingcart");
+Connection c = cc.connection("ds-warehouse");
 ```
 
-[More details on establishing connections](docs/connections.md)
+What actually happens:
 
-## Running queries
+1. `Connector` asks `ConnectorContext` for the current `ConnectorContext`
+2. The context checks if a connection already exists for `"ds-warehouse"`
+3. If not, it creates one from the configured DataSource
+4. The same connection is reused for the rest of the unit of work
 
-The `DAOType` manages query executions, and transforms resultsets.
-Applications can either call `DAOType` directly, or inherit from it in implementing custom data access objects (DAOs).
 
-```java
-DAOType dt = new DAOType("ds-users");
-ResultRows users = dt.select("select * from users");
+## Interaction overview
+
+### High-level sequence
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Interceptor
+    participant ConnectorContext
+    participant ConnectorContext
+    participant Connector
+    participant DataSource
+
+    Caller->>Interceptor: invoke method
+    Interceptor->>ConnectorContext: new ConnectorContext()
+    Interceptor->>ConnectorContext: set(context)
+    Caller->>Connector: connect("ds")
+    Connector->>ConnectorContext: get()
+    Connector->>ConnectorContext: getOrOpen("ds")
+    ConnectorContext->>DataSource: getConnection()
+    DataSource-->>ConnectorContext: Connection
+    ConnectorContext-->>Connector: Connection
+    Connector-->>Caller: Connection
+    Interceptor->>ConnectorContext: commit / rollback
+    Interceptor->>ConnectorContext: close all connections
+    Interceptor->>ConnectorContext: clear()
 ```
 
-### Selecting data
+## Jakarta EE integration (interceptor-based)
 
-Queries' result sets are always returned in a ResultRows wrapper object that provides a jdax API for retrieving data.
+In a Jakarta EE environment, an interceptor defines the unit-of-work boundary.
+
+Typical interceptor responsibilities:
+
+ Create a new `ConnectorContext`
+ Bind it to `ConnectorContext`
+ Invoke the intercepted method
+ Commit or rollback
+ Clear the context
+
+Example (simplified):
 
 ```java
-try (ResultRows users = dt.select("select * from users")) {
-  while (users.next()) {
-    int userId = users.getInt("id");
-    int userName = users.getString("name");
-  }
+@AroundInvoke
+public Object around(InvocationContext ic) throws Exception {
+    ConnectorContext ctx = new ConnectorContext();
+    ConnectorContext.set(ctx);
+    try {
+        Object result = ic.proceed();
+        ctx.commit();
+        return result;
+    } catch (Exception e) {
+        ctx.rollback();
+        throw e;
+    } finally {
+        ConnectorContext.clear();
+    }
 }
 ```
 
-POJOs and records are supported as well. The next example lets jdax transform a ResultRow in to an User object/record
+Business code remains clean and unaware of lifecycle handling.
+
+
+
+## Outside-container usage
+
+The same model works without CDI or interceptors.
 
 ```java
-try (ResultRows users = dt.select("select * from users")) {
-  while (users.next()) {
-    User user = users.get(User.class);
+ConnectorContext ctx = new ConnectorContext();
+ConnectorContext.set(ctx);
 
-    int userId = user.id;
-    int userName = user.name;
-  }
+try {
+    DAOType dao = new DAOType("ds-users");
+    dao.update(...);
+    ctx.commit();
+} catch (Exception e) {
+    ctx.rollback();
+} finally {
+    ConnectorContext.clear();
 }
 ```
 
-[Supported data types](docs/types.md)
-[More query variants](docs/queries.md)
+This allows reuse of the same DAOs in:
+
+ unit tests
+ batch jobs
+ command-line tools
 
 
-### Inserting records
 
-Basic insert statement
+## Force-close and leak protection
 
-```java
-List<Long> inserted = dao.insertOne(values, "insert into numbers (scale, name) values (?, ?)", fieldName);
-```
+`ConnectorContext` may optionally support force-close functionality.
 
-The return value is a List of the numeric identity of the newly inserted record. 
-The `fieldName` argument specifies what field values to return.
-If fieldName is not provided, then an insert count is returned.
+Purpose:
 
-Some databases do not support the use of `fieldName` to specify the identity field. Setting the `Features.USE_GENERATED_KEYS_FLAG`
-can be used for those implementations, and the default identity will be returned instead.
+ Detect mismatched open/close counts
+ Clean up leaked connections
+ Attempt recovery when a pool is exhausted
 
-[More advanced queries](docs/queries.md)
+Typical use cases:
 
-#### Updating records
+ defensive cleanup in interceptors
+ emergency cleanup by a higher-level manager
+ diagnostics in test environments
 
-Basic update statement
+Force-close is not the normal path and indicates a programming error upstream.
 
-```java
-Object[] values = new Object[]{ "name", 127};
-int updated = dao.update(values, "update users set name = ?, where id = ?)");
-```
 
-This returns the number of updated records. The `values` array contains the actual values for query input parameters.
 
-[Advanced queries](docs/queries.md)
+## Rules and invariants
+
+JDAX enforces the following invariants:
+
+ Connections are owned by `ConnectorContext`
+ Application code must never close connections
+ `Connector.connect()` must only be called when a context is active
+ All contexts must be cleared in `finally` blocks
+
+Violations are considered bugs.
+
+
+
+## FAQ
+
+### Why not `@Transactional`?
+
+Because `@Transactional`:
+
+ delegates control to the container
+ hides commit and rollback boundaries
+ makes multi-DataSource workflows opaque
+ cannot be used outside a container
+
+JDAX explicitly chooses clarity and control over convenience.
+
+
+
+### Why not JTA?
+
+JTA:
+
+ requires a transaction manager
+ complicates deployment
+ introduces XA complexity
+ is unnecessary for many applications
+
+JDAX assumes that transaction boundaries are a business concern, not a container concern.
+
+
+
+### Why not `ThreadLocal`?
+
+`ThreadLocal`:
+
+ breaks in async and reactive flows
+ leaks across thread pools
+ complicates testing
+ hides dependencies
+
+JDAX uses explicit scoping instead.
+If you can’t see where a context is set and cleared, that’s a design smell.
+
+
+
+### Why inject `ConnectorContext` at all?
+
+You normally don’t.
+
+ Application code uses `Connector`
+ Infrastructure code controls `ConnectorContext`
+
+This preserves separation of concerns:
+
+ interceptors manage lifecycle
+ business code focuses on logic
+
+
+
+## Summary
+
+JDAX’s connection model is:
+
+ explicit
+ portable
+ deterministic
+ container-agnostic
+
+It trades hidden magic for clear structure, making it suitable for
+long-lived systems where correctness and debuggability matter more than convenience.
