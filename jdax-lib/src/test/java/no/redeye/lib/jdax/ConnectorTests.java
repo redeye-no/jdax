@@ -33,7 +33,7 @@ class ConnectorTests {
         Connector.register(DS, fn);
 
         Assertions.assertTrue(Connector.ready(DS));
-        Assertions.assertSame(ds, Connector.ds(DS));
+        Assertions.assertSame(ds, Connector.dataSource(DS));
     }
 
     @Test
@@ -52,7 +52,7 @@ class ConnectorTests {
         Connector.register(DS, ds);
 
         Assertions.assertTrue(Connector.ready(DS));
-        Assertions.assertSame(ds, Connector.ds(DS));
+        Assertions.assertSame(ds, Connector.dataSource(DS));
     }
 
     @Test
@@ -72,7 +72,7 @@ class ConnectorTests {
         Connector.deregister(DS);
 
         Assertions.assertFalse(Connector.ready(DS));
-        Assertions.assertNull(Connector.ds(DS));
+        Assertions.assertNull(Connector.dataSource(DS));
     }
 
     // -------------------------

@@ -154,9 +154,7 @@ public class TestBase {
     }
 
     protected void d(String s, String dsName) {
-//            System.out.println("DS- Hikari DS " + s);
-
-        if (Connector.ds(dsName) instanceof HikariDataSource hikari) {
+        if (Connector.dataSource(dsName) instanceof HikariDataSource hikari) {
 
             HikariPoolMXBean mxBean = hikari.getHikariPoolMXBean();
 

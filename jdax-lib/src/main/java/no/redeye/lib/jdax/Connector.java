@@ -148,14 +148,6 @@ public final class Connector {
         return CONTEXTS.get().containsKey(contextId);
     }
 
-    public static DataSource ds(String dataSourceName) {
-        DataSourceEntry dse = DATASOURCES.get(dataSourceName);
-        if (null != dse) {
-            return dse.dataSource;
-        }
-        return null;
-    }
-
     /**
      * Create a new connection context with the given contest ID.
      * If one already exists, return it.
@@ -250,9 +242,13 @@ public final class Connector {
         }
     }
     
-    public Map<String, DataSourceEntry> dataSources(){
-        return DATASOURCES;
-    }
+    public static DataSource dataSource(String dataSourceName) {
+        DataSourceEntry dse = DATASOURCES.get(dataSourceName);
+        if (null != dse) {
+            return dse.dataSource;
+        }
+        return null;
+    }    
 }
 
 //    private static final ScopedValue<ConnectorContext> CURRENT = ScopedValue.newInstance(); // Java 21+
