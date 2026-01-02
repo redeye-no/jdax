@@ -46,8 +46,8 @@ Instead, it uses an explicit *unit-of-work* model that provides:
 * Deterministic connection lifecycle
 * Usability both inside and outside Jakarta EE containers
 
-Connections are acquired through `Connector`, scoped to a logical unit of work, and managed by
-an internal context rather than `ThreadLocal`.
+Connections are acquired through `Connector`, scoped to a logical unit of work, 
+and managed internally by context.
 
 For a full architectural overview, see:
 

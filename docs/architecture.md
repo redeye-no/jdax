@@ -1,7 +1,7 @@
 
 # JDAX Connection Architecture
 
-This document describes how ConnectorContext, and Connector work together to provide
+This document describes how Connector, and ConnectorContext work together to provide
 explicit, portable, and deterministic connection and transaction handling.
 
 The design deliberately avoids container-managed transactions, `@Transactional`, and `ThreadLocal`
@@ -85,7 +85,7 @@ Responsibilities:
 
 Key rule:
 
-> `Connector.context(name)` always returns the connection associated with the named unit of work.
+> `Connector.context(name)` always returns the context associated with the named unit of work.
 
 Example:
 
@@ -101,7 +101,6 @@ What actually happens:
 3. If not, it creates one from the configured DataSource
 4. The same connection is reused for the rest of the unit of work
 
-
 ## Interaction overview
 
 ### High-level sequence
@@ -109,25 +108,16 @@ What actually happens:
 ```mermaid
 sequenceDiagram
     participant Caller
-    participant Interceptor
-    participant ConnectorContext
-    participant ConnectorContext
     participant Connector
+    participant ConnectorContext
     participant DataSource
 
-    Caller->>Interceptor: invoke method
-    Interceptor->>ConnectorContext: new ConnectorContext()
-    Interceptor->>ConnectorContext: set(context)
-    Caller->>Connector: connect("ds")
-    Connector->>ConnectorContext: get()
-    Connector->>ConnectorContext: getOrOpen("ds")
-    ConnectorContext->>DataSource: getConnection()
-    DataSource-->>ConnectorContext: Connection
-    ConnectorContext-->>Connector: Connection
-    Connector-->>Caller: Connection
-    Interceptor->>ConnectorContext: commit / rollback
-    Interceptor->>ConnectorContext: close all connections
-    Interceptor->>ConnectorContext: clear()
+    Caller->>Connector: context("ctx")
+    Connector->>ConnectorContext: create()
+    ConnectorContext-->>Caller: ConnectorContext
+    Caller->>DataSource: run queries
+    DataSource-->>Caller: results
+    Caller->>ConnectorContext: close()
 ```
 
 ## Jakarta EE integration (interceptor-based)
@@ -147,9 +137,7 @@ Example (simplified):
 ```java
 @AroundInvoke
 public Object around(InvocationContext ic) throws Exception {
-    ConnectorContext ctx = new ConnectorContext();
-    ConnectorContext.set(ctx);
-    try {
+    try (ConnectorContext ctx = new Connector.context("ds")) {
         Object result = ic.proceed();
         ctx.commit();
         return result;
@@ -157,31 +145,26 @@ public Object around(InvocationContext ic) throws Exception {
         ctx.rollback();
         throw e;
     } finally {
-        ConnectorContext.clear();
+        Connector.detach("ds");
     }
 }
 ```
 
 Business code remains clean and unaware of lifecycle handling.
 
-
-
 ## Outside-container usage
 
 The same model works without CDI or interceptors.
 
 ```java
-ConnectorContext ctx = new ConnectorContext();
-ConnectorContext.set(ctx);
-
-try {
-    DAOType dao = new DAOType("ds-users");
+try (ConnectorContext ctx = new Connector.context("modify")) {
+    DAOType dao = new DAOType("ds-users", "modify");
     dao.update(...);
     ctx.commit();
 } catch (Exception e) {
     ctx.rollback();
 } finally {
-    ConnectorContext.clear();
+    Connector.detach("modify");
 }
 ```
 
