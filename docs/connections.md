@@ -5,13 +5,13 @@ The first call to the API must configure the connection parameters. This is done
 
 | Method | Description |
 |---|---|
-| `Connector.prepare()` | Set up a connectin to a datasource |
+| `Connector.register(()` | Set up a connectin to a datasource |
 
-The prepare method has 2 variants, 1 of which must be called during pool configuration (usually startup):
+The register( method has 2 variants, 1 of which must be called during pool configuration (usually startup):
 
 ```java
-Connector.prepare(dsName, DataSourceFunction, Features);
-Connector.prepare(dsName, DataSource, Features);
+Connector.register((dsName, DataSourceFunction, Features);
+Connector.register((dsName, DataSource, Features);
 ```
 
 One takes a function that returns a DataSource, the other takes a configured DataSource.
@@ -34,7 +34,7 @@ One takes a function that returns a DataSource, the other takes a configured Dat
 ```
 
 ```java
-Connector.prepare("MY_DATASOURCE", dataSource());
+Connector.register(("MY_DATASOURCE", dataSource());
 ```
 
 ### Using a DataSourceFunction
@@ -49,7 +49,7 @@ Connector.prepare("MY_DATASOURCE", dataSource());
             }
         };
 
-        Connector.prepare("MY_DATASOURCE", dsCreator);
+        Connector.register(("MY_DATASOURCE", dsCreator);
 ```
 
 ## Features
@@ -68,14 +68,14 @@ Example:
 
 ```java
 DataSource dataSource = new HikariDataSource(new new HikariConfig());
-Connector.prepare("ds-users", dataSource, Features.AUTO_COMMIT_ENABLED);
+Connector.register(("ds-users", dataSource, Features.AUTO_COMMIT_ENABLED);
 ```
 
 With this connection, queries will be committed automatically.
 The API allows for multiple features to be specified together.
 
 ```java
-Connector.prepare("ds-users", dataSource, 
+Connector.register(("ds-users", dataSource, 
     Features.AUTO_COMMIT_ENABLED, 
     Features.USE_GENERATED_KEYS_FLAG,
     Features.NULL_RESULTS_DISABLED);

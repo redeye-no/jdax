@@ -78,79 +78,109 @@ public class TypeRegistry {
     );
 
     static {
-        // Conversions register for SQL->Java types.
-        register(Types.DECIMAL, BigInteger.class, v -> ((BigDecimal) v).toBigInteger());
-        register(Types.DECIMAL, Integer.class, v -> ((BigDecimal) v).intValue());
-        register(Types.DECIMAL, Long.class, v -> ((BigDecimal) v).longValue());
-        register(Types.DECIMAL, Double.class, v -> ((BigDecimal) v).doubleValue());
-        register(Types.DECIMAL, Float.class, v -> ((BigDecimal) v).floatValue());
-        register(Types.DECIMAL, Short.class, v -> ((BigDecimal) v).shortValue());
+// Conversions register for SQL->Java types.
+        register(Types.DECIMAL, BigDecimal.class, ResultConverter::toBigDecimal);
+        register(Types.DECIMAL, BigInteger.class, ResultConverter::toBigInteger);
+        register(Types.DECIMAL, Integer.class, ResultConverter::toInteger);
+        register(Types.DECIMAL, Long.class, ResultConverter::toLong);
+        register(Types.DECIMAL, Double.class, ResultConverter::toDouble);
+        register(Types.DECIMAL, Float.class, ResultConverter::toFloat);
+        register(Types.DECIMAL, Short.class, ResultConverter::toShort);
         register(Types.DECIMAL, String.class, v -> ((BigDecimal) v).toPlainString());
         register(Types.DECIMAL, BigDecimal.class, v -> (BigDecimal) v); // No convert
         register(Types.DECIMAL, Void.class, v -> BigDecimal.ZERO); // Null/void
 
-        register(Types.NUMERIC, BigInteger.class, v -> ((BigDecimal) v).toBigInteger());
-        register(Types.NUMERIC, Integer.class, v -> ((BigDecimal) v).intValue());
-        register(Types.NUMERIC, Long.class, v -> ((BigDecimal) v).longValue());
-        register(Types.NUMERIC, Double.class, v -> ((BigDecimal) v).doubleValue());
-        register(Types.NUMERIC, Float.class, v -> ((BigDecimal) v).floatValue());
-        register(Types.NUMERIC, Short.class, v -> ((BigDecimal) v).shortValue());
+        register(Types.NUMERIC, BigDecimal.class, ResultConverter::toBigDecimal);
+        register(Types.NUMERIC, BigInteger.class, ResultConverter::toBigInteger);
+        register(Types.NUMERIC, Integer.class, ResultConverter::toInteger);
+        register(Types.NUMERIC, Long.class, ResultConverter::toLong);
+        register(Types.NUMERIC, Double.class, ResultConverter::toDouble);
+        register(Types.NUMERIC, Float.class, ResultConverter::toFloat);
+        register(Types.NUMERIC, Short.class, ResultConverter::toShort);
         register(Types.NUMERIC, String.class, v -> ((BigDecimal) v).toPlainString());
         register(Types.NUMERIC, BigDecimal.class, v -> (BigDecimal) v); // No convert
         register(Types.NUMERIC, Void.class, v -> BigDecimal.ZERO); // Null/void
 
-        register(Types.BIGINT, Integer.class, v -> ((Long) v).intValue());
-        register(Types.BIGINT, Double.class, v -> ((Long) v).doubleValue());
-        register(Types.BIGINT, Float.class, v -> ((Long) v).floatValue());
-        register(Types.BIGINT, Short.class, v -> ((Long) v).shortValue());
-        register(Types.BIGINT, String.class, v -> ((Long) v).toString());
+        register(Types.BIGINT, BigDecimal.class, ResultConverter::toBigDecimal);
+        register(Types.BIGINT, BigInteger.class, ResultConverter::toBigInteger);
+        register(Types.BIGINT, Integer.class, ResultConverter::toInteger);
+        register(Types.BIGINT, Double.class, ResultConverter::toDouble);
+        register(Types.BIGINT, Float.class, ResultConverter::toFloat);
+        register(Types.BIGINT, Short.class, ResultConverter::toShort);
+        register(Types.BIGINT, Byte.class, ResultConverter::toByte);
+        register(Types.BIGINT, String.class, ResultConverter::toStringValue);
         register(Types.BIGINT, Long.class, v -> (Long) v); // No convert
         register(Types.BIGINT, Void.class, v -> 0l); // Null/void
 
-        register(Types.INTEGER, Long.class, v -> ((Integer) v).longValue());
-        register(Types.INTEGER, Double.class, v -> ((Integer) v).doubleValue());
-        register(Types.INTEGER, Float.class, v -> ((Integer) v).floatValue());
-        register(Types.INTEGER, Short.class, v -> ((Integer) v).shortValue());
-        register(Types.INTEGER, Byte.class, v -> ((Integer) v).byteValue());
-        register(Types.INTEGER, String.class, v -> ((Integer) v).toString());
+        register(Types.INTEGER, BigDecimal.class, ResultConverter::toBigDecimal);
+        register(Types.INTEGER, BigInteger.class, ResultConverter::toBigInteger);
+        register(Types.INTEGER, Long.class, ResultConverter::toLong);
+        register(Types.INTEGER, Double.class, ResultConverter::toDouble);
+        register(Types.INTEGER, Float.class, ResultConverter::toFloat);
+        register(Types.INTEGER, Short.class, ResultConverter::toShort);
+        register(Types.INTEGER, Byte.class, ResultConverter::toByte);
+        register(Types.INTEGER, String.class, ResultConverter::toStringValue);
         register(Types.INTEGER, Integer.class, v -> (Integer) v); // No convert
         register(Types.INTEGER, Void.class, v -> 0); // Null/void
 
-        register(Types.DOUBLE, Integer.class, v -> ((Double) v).intValue());
-        register(Types.DOUBLE, Long.class, v -> ((Double) v).longValue());
-        register(Types.DOUBLE, Float.class, v -> ((Double) v).floatValue());
-        register(Types.DOUBLE, Short.class, v -> ((Double) v).shortValue());
-        register(Types.DOUBLE, String.class, v -> ((Double) v).toString());
+        register(Types.DOUBLE, BigDecimal.class, ResultConverter::toBigDecimal);
+        register(Types.DOUBLE, BigInteger.class, ResultConverter::toBigInteger);
+        register(Types.DOUBLE, Integer.class, ResultConverter::toInteger);
+        register(Types.DOUBLE, Long.class, ResultConverter::toLong);
+        register(Types.DOUBLE, Float.class, ResultConverter::toFloat);
+        register(Types.DOUBLE, Short.class, ResultConverter::toShort);
+        register(Types.DOUBLE, Byte.class, ResultConverter::toByte);
+        register(Types.DOUBLE, String.class, ResultConverter::toStringValue);
         register(Types.DOUBLE, Double.class, v -> (Double) v); // No convert
         register(Types.DOUBLE, Void.class, v -> 0.0d); // Null/void
 
-        // Float <--> Double
-        register(Types.FLOAT, Integer.class, v -> ((Double) v).intValue());
-        register(Types.FLOAT, Long.class, v -> ((Double) v).longValue());
-        register(Types.FLOAT, Short.class, v -> ((Double) v).shortValue());
-        register(Types.FLOAT, String.class, v -> ((Double) v).toString());
+// Float <--> Double
+        register(Types.FLOAT, BigDecimal.class, ResultConverter::toBigDecimal);
+        register(Types.FLOAT, BigInteger.class, ResultConverter::toBigInteger);
+        register(Types.FLOAT, Integer.class, ResultConverter::toInteger);
+        register(Types.FLOAT, Long.class, ResultConverter::toLong);
+        register(Types.FLOAT, Short.class, ResultConverter::toShort);
+        register(Types.FLOAT, Byte.class, ResultConverter::toByte);
+        register(Types.FLOAT, String.class, ResultConverter::toStringValue);
         register(Types.FLOAT, Double.class, v -> (Double) v);
-        register(Types.FLOAT, Float.class, v -> ((Double) v).floatValue()); // No convert
+        register(Types.FLOAT, Float.class, ResultConverter::toFloat); // No convert
         register(Types.FLOAT, Void.class, v -> 0.0d); // Null/void
 
-        register(Types.REAL, Integer.class, v -> ((Float) v).intValue());
-        register(Types.REAL, Long.class, v -> ((Float) v).longValue());
-        register(Types.REAL, Double.class, v -> ((Float) v).doubleValue());
-        register(Types.REAL, Short.class, v -> ((Float) v).shortValue());
-        register(Types.REAL, String.class, v -> ((Float) v).toString());
+        register(Types.REAL, BigDecimal.class, ResultConverter::toBigDecimal);
+        register(Types.REAL, BigInteger.class, ResultConverter::toBigInteger);
+        register(Types.REAL, Integer.class, ResultConverter::toInteger);
+        register(Types.REAL, Long.class, ResultConverter::toLong);
+        register(Types.REAL, Double.class, ResultConverter::toDouble);
+        register(Types.REAL, Short.class, ResultConverter::toShort);
+        register(Types.REAL, Byte.class, ResultConverter::toByte);
+        register(Types.REAL, String.class, ResultConverter::toStringValue);
         register(Types.REAL, Float.class, v -> (Float) v); // No convert
         register(Types.REAL, Void.class, v -> 0.0f); // Null/void
 
-        register(Types.SMALLINT, Integer.class, v -> ((Short) v).intValue());
-        register(Types.SMALLINT, Long.class, v -> ((Short) v).longValue());
-        register(Types.SMALLINT, Double.class, v -> ((Short) v).doubleValue());
-        register(Types.SMALLINT, Float.class, v -> ((Short) v).floatValue());
-        register(Types.SMALLINT, Byte.class, v -> ((Short) v).byteValue());
-        register(Types.SMALLINT, String.class, v -> ((Short) v).toString());
+        register(Types.SMALLINT, BigDecimal.class, ResultConverter::toBigDecimal);
+        register(Types.SMALLINT, BigInteger.class, ResultConverter::toBigInteger);
+        register(Types.SMALLINT, Integer.class, ResultConverter::toInteger);
+        register(Types.SMALLINT, Long.class, ResultConverter::toLong);
+        register(Types.SMALLINT, Double.class, ResultConverter::toDouble);
+        register(Types.SMALLINT, Float.class, ResultConverter::toFloat);
+        register(Types.SMALLINT, Byte.class, ResultConverter::toByte);
+        register(Types.SMALLINT, String.class, ResultConverter::toStringValue);
         register(Types.SMALLINT, Short.class, v -> (Short) v); // No convert
         register(Types.SMALLINT, Void.class, v -> 0); // Null/void
 
-        register(Types.BOOLEAN, String.class, v -> ((Boolean) v) ? "true" : "false");
+        register(Types.TINYINT, BigDecimal.class, ResultConverter::toBigDecimal);
+        register(Types.TINYINT, BigInteger.class, ResultConverter::toBigInteger);
+        register(Types.TINYINT, Integer.class, ResultConverter::toInteger);
+        register(Types.TINYINT, Long.class, ResultConverter::toLong);
+        register(Types.TINYINT, Double.class, ResultConverter::toDouble);
+        register(Types.TINYINT, Float.class, ResultConverter::toFloat);
+        register(Types.TINYINT, Byte.class, v -> (Byte) v);
+        register(Types.TINYINT, String.class, ResultConverter::toStringValue);
+        register(Types.TINYINT, Short.class, ResultConverter::toShort); // No convert
+        register(Types.TINYINT, Void.class, v -> 0); // Null/void
+
+        register(Types.BOOLEAN, String.class, ResultConverter::toStringValue);
+        register(Types.BOOLEAN, Integer.class, v -> ((Boolean) v) ? 1 : 0);
         register(Types.BOOLEAN, Boolean.class, v -> (Boolean) v); // No convert
         register(Types.BOOLEAN, Void.class, v -> Boolean.FALSE); // Null/void
 

@@ -4,6 +4,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -32,15 +33,18 @@ public class DAOType {
 
     private final Pattern SQL_STATEMENT_PARAM_MARKERS = Pattern.compile(",?[ ]*'?#[a-zA-Z0-9_\\-.: ]*'?|,?[ ]*\\?{2}|,?[ ]*\\?");
 
-    private final String DS_NAME;
+    private String datasourceName;
+    private String contextId;
 
     /**
      *
      * @param datasourceName The datasourceName associated datasource declared
      *                       in the Connector
+     * @param contextId
      */
-    public DAOType(String datasourceName) {
-        DS_NAME = datasourceName;
+    public DAOType(String datasourceName, String contextId) {
+        this.datasourceName = datasourceName;
+        this.contextId = contextId;
     }
 
     /**
@@ -299,7 +303,7 @@ public class DAOType {
         int insArrayIndex = 0;
         boolean isFirstParam = true;
 
-        logger.debug("INQ: {}" , sql);
+        logger.debug("INQ: {}", sql);
         while (matcher.find()) {
             bigQuery.append(sql.substring(queryBuilderIndex, matcher.start()));
 
@@ -378,9 +382,9 @@ public class DAOType {
     private ResultRows executeQuery(QueryInputs qi) throws SQLException {
         logger.debug("SQL: {}", qi.sql());
 
-        PreparedStatement ps = Connector.connection(DS_NAME).prepareStatement(qi.sql());
+        PreparedStatement ps = connection().prepareStatement(qi.sql());
         bind(ps, qi.values());
-        boolean allowNulls = !Connector.enabled(DS_NAME, Features.NULL_RESULTS_DISABLED);
+        boolean allowNulls = !Connector.enabled(datasourceName, Features.NULL_RESULTS_DISABLED);
         return new ResultRows(ps.executeQuery(), ps, allowNulls);
     }
 
@@ -389,14 +393,16 @@ public class DAOType {
         boolean isReturningGeneratedKeys = true;
         PreparedStatement ps;
 
+        Connection connection = connection();
+
         if ((null != fields) && (fields.length > 0) && (null != fields[0]) && (!fields[0].isBlank())) {
-            // Explicit column names requested
-            ps = Connector.connection(DS_NAME).prepareStatement(qi.sql(), fields);
-        } else if (Connector.enabled(DS_NAME, Features.USE_GENERATED_KEYS_FLAG)) {
+            // Explicit column names requested            
+            ps = connection.prepareStatement(qi.sql(), fields);
+        } else if (Connector.enabled(datasourceName, Features.USE_GENERATED_KEYS_FLAG)) {
             // Generic generated keys
-            ps = Connector.connection(DS_NAME).prepareStatement(qi.sql(), Statement.RETURN_GENERATED_KEYS);
+            ps = connection.prepareStatement(qi.sql(), Statement.RETURN_GENERATED_KEYS);
         } else {
-            ps = Connector.connection(DS_NAME).prepareStatement(qi.sql());
+            ps = connection.prepareStatement(qi.sql());
             isReturningGeneratedKeys = false;
         }
         return query(ps, qi, !isReturningGeneratedKeys);
@@ -406,10 +412,14 @@ public class DAOType {
         logger.debug("SQL: {}", qi.sql());
         boolean returnCount = true;
 
-        PreparedStatement ps = Connector.connection(DS_NAME).prepareStatement(qi.sql());
+        PreparedStatement ps = connection().prepareStatement(qi.sql());
 
         InsertResults result = query(ps, qi, returnCount);
         return new UpdateResults(result.count());
+    }
+
+    private Connection connection() throws SQLException {
+        return Connector.context(contextId).connection(datasourceName);
     }
 
     private InsertResults query(PreparedStatement ps, QueryInputs qi, boolean returnCount) throws SQLException {
